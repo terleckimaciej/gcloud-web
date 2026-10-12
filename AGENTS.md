@@ -38,6 +38,7 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
   - Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build` (packaging, dependencies, uv), `ci`, `chore`.
   - Scope is optional. Use it only when it adds information: a layer (`cli`, `context`, `cache`, `api`, `web`, `services`) or a GCP service (`run`, `sql`, …). Omit it for cross-cutting changes; never force one.
   - Description: imperative mood, lowercase, no trailing period, about 72 characters max. Mark breaking changes with `!` (e.g. `feat(cli)!: …`).
+- No AI attribution: do not add `Co-Authored-By` or "Generated with" lines to commit messages or PR descriptions.
 - The PR title uses the same format, because it becomes the commit message on squash merge. The PR description explains what changed and why, and how it was verified.
 
 ## ADRs
