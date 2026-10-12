@@ -1,0 +1,20 @@
+[project]
+name = "gcw"
+version = "0.1.0"
+description = "Open Google Cloud console pages for gcloud services and resources from the terminal."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+gcw = "gcw.cli.main:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
