@@ -16,10 +16,17 @@ Every service module defines:
     KINDS     resource kinds, ``{"services": Route(...), ...}``
 
 To add a service, create its module and append it to the tuple below.
+
+Services that only have a start page live in ``landing`` instead, as entries of
+``LANDINGS``. The two registries are disjoint: a name is either a full service
+module or a landing page, never both (checked by the tests).
 """
 
 from types import ModuleType
 
 from gcw.services import run
+from gcw.services.landing import LANDINGS, Landing
 
 SERVICES: dict[str, ModuleType] = {module.NAME: module for module in (run,)}
+
+__all__ = ["LANDINGS", "SERVICES", "Landing"]

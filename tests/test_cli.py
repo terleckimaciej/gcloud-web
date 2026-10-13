@@ -138,9 +138,9 @@ def test_resource_with_location_and_tab(capsys):
 
 
 def test_location_aliases_are_equivalent(capsys):
-    """``-l``, ``--location``, ``--region`` and ``--zone`` set the same value."""
+    """All six spellings of the location flag set the same value."""
     outputs = []
-    for flag in ("-l", "--location", "--region", "--zone"):
+    for flag in ("-l", "--location", "-r", "--region", "-z", "--zone"):
         main(["run", "services", "api", flag, "europe-west1", "-n"])
         outputs.append(capsys.readouterr().out)
     assert len(set(outputs)) == 1
@@ -182,6 +182,32 @@ def test_tab_without_name_is_rejected(capsys):
     with pytest.raises(SystemExit):
         main(["run", "services", "--tab", "logs"])
     assert "require a resource NAME" in capsys.readouterr().err
+
+
+# `gcw services`
+
+
+def test_services_lists_both_registries(capsys):
+    """``gcw services`` prints services with routes, their kinds and tabs, then start pages."""
+    assert main(["services"]) == 0
+
+    out = capsys.readouterr().out
+    assert "services with resources:" in out
+    assert "run             Cloud Run services and jobs" in out
+    assert "    jobs          tabs: executions, logs, triggers, yaml" in out
+    assert "start pages only:" in out
+    assert "bigquery        BigQuery studio and datasets" in out
+
+
+def test_services_needs_no_gcloud_context(capsys, gcloud_dir):
+    """The listing works without any gcloud configuration, account or project."""
+    (gcloud_dir / "configurations" / "config_default").unlink()
+
+    assert main(["services"]) == 0
+
+    captured = capsys.readouterr()
+    assert "start pages only:" in captured.out
+    assert captured.err == ""
 
 
 def test_global_flags_work_before_and_after_command(capsys):

@@ -8,8 +8,10 @@ command. Commands::
     gcw open PATH                        open any console path, e.g. ``run/jobs``
     gcw SERVICE [KIND [NAME]]            service overview, list of a kind, or one resource
         [-l LOCATION] [--tab TAB]
+    gcw SERVICE                          start page of a service that has no routes yet
 
-Service commands are generated from the registry in ``gcw.services``.
+Service commands are generated from the two registries in ``gcw.services``:
+modules with routes (``SERVICES``) and start pages (``LANDINGS``).
 """
 
 import argparse
@@ -18,11 +20,29 @@ from types import ModuleType
 
 from gcw.context.gcloud_config import UnknownConfigurationError
 from gcw.context.resolve import Context, resolve_context
-from gcw.services import SERVICES
+from gcw.services import LANDINGS, SERVICES, Landing
 from gcw.web.route import RouteError
 from gcw.web.url import console_url
 
 DASHBOARD_PATH = "home/dashboard"
+
+# Shown at the end of `gcw --help`. The command list above it cannot carry every
+# service (there are dozens of start pages), so the examples teach the shape of a
+# command instead, one line per form: dashboard, resource, tab, list, start page,
+# other project, raw path.
+EXAMPLES = """\
+examples:
+  gcw                                project dashboard
+  gcw run services api               the Cloud Run service "api"
+  gcw run services api --tab logs    its logs tab
+  gcw run jobs                       the list of Cloud Run jobs
+  gcw bigquery                       the BigQuery start page
+  gcw pubsub -p other-project        Pub/Sub in another project
+  gcw open iam-admin/iam -n          print the URL of any console path
+
+Many more services have a start page like `gcw bigquery`.
+Run `gcw services` for the full list.\
+"""
 
 
 class _VersionAction(argparse.Action):
@@ -84,10 +104,26 @@ def _add_service_command(commands, module: ModuleType) -> None:
     command.add_argument("kind", nargs="?", choices=list(module.KINDS), metavar="KIND",
                          help=f"resource kind: {', '.join(module.KINDS)}")
     command.add_argument("name", nargs="?", help="resource name; omit to open the list")
-    command.add_argument("-l", "--location", "--region", "--zone", dest="location",
+    # All six spellings are the same flag: a route needs either a region or a zone,
+    # never both, so the user can type whichever word fits the service.
+    command.add_argument("-l", "--location", "-r", "--region", "-z", "--zone", dest="location",
                          help="region or zone of the resource (default: from gcloud configuration)")
     command.add_argument("--tab", help="page tab of the resource")
     command.set_defaults(service=module)
+
+
+def _add_landing_command(commands, name: str, landing: Landing) -> None:
+    """Add ``gcw <service>`` for one service that only has a start page.
+
+    These commands take no resource arguments, only the global flags. They are
+    left out of the ``gcw --help`` command list (argparse lists a subparser only
+    when it is given ``help``), because there are dozens of them; ``gcw
+    services`` is where they are meant to be discovered. ``gcw <service>
+    --help`` still works and shows the description.
+    """
+    command = commands.add_parser(name, description=landing.help)
+    _add_global_flags(command, with_defaults=False)
+    command.set_defaults(landing=landing)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -99,6 +135,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gcw",
         description="Open Google Cloud console pages from the terminal.",
+        epilog=EXAMPLES,
+        # Keep the line breaks and alignment of EXAMPLES; argparse rewraps text by default.
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--version", action=_VersionAction, help="show the installed version and exit")
     _add_global_flags(parser, with_defaults=True)
@@ -107,9 +146,38 @@ def build_parser() -> argparse.ArgumentParser:
     open_command = commands.add_parser("open", help="open any console path, e.g. run/jobs")
     _add_global_flags(open_command, with_defaults=False)
     open_command.add_argument("path", help="path after console.cloud.google.com/")
+    # Needs no context, so it takes no global flags.
+    commands.add_parser("services", help="list the supported services, kinds and tabs")
     for module in SERVICES.values():
         _add_service_command(commands, module)
+    for name, landing in LANDINGS.items():
+        _add_landing_command(commands, name, landing)
     return parser
+
+
+def _services_listing() -> str:
+    """Return every service the CLI knows, in two groups.
+
+    Services with routes come first, each followed by its resource kinds and
+    their tabs, then the services that only have a start page. The split is the
+    useful distinction here: it says whether ``gcw <service> <kind> <name>`` can
+    reach a single resource, or only the service's own page.
+
+    Returns:
+        The listing as one string, ready for the pager.
+    """
+    column = max(len(name) for name in [*SERVICES, *LANDINGS]) + 4
+    lines = ["services with resources:"]
+
+    for name, module in sorted(SERVICES.items()):
+        lines.append(f"  {name.ljust(column)}{module.HELP}")
+        for kind, route in module.KINDS.items():
+            tabs = "tabs: " + ", ".join(route.tabs) if route.tabs else ""
+            lines.append(f"    {kind.ljust(column - 2)}{tabs}".rstrip())
+
+    lines.append("\nstart pages only:")
+    lines += [f"  {name.ljust(column)}{landing.help}" for name, landing in sorted(LANDINGS.items())]
+    return "\n".join(lines)
 
 
 def _service_path(args: argparse.Namespace, context: Context) -> str:
@@ -186,6 +254,10 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "services":
+        # Pure information about the build; no gcloud context is needed or read.
+        print(_services_listing())
+        return 0
     if args.command in SERVICES and args.name is None and (args.location or args.tab):
         parser.error("--location and --tab require a resource NAME")
 
@@ -195,6 +267,8 @@ def main(argv: list[str] | None = None) -> int:
             path = args.path
         elif args.command in SERVICES:
             path = _service_path(args, context)
+        elif args.command in LANDINGS:
+            path = LANDINGS[args.command].path
         else:
             path = DASHBOARD_PATH
     except (UnknownConfigurationError, RouteError) as error:
