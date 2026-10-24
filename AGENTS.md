@@ -6,9 +6,9 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
 
 `gcw` ("gcloud web"): a `gh browse`-style CLI that opens Google Cloud services and resources in the browser, taking context from the gcloud configuration and offering instant TAB completion of resource names.
 
-- Plan and progress: [docs/plan.md](docs/plan.md). Tick checkboxes and the Status column once something is done and verified.
-- Decisions: [docs/adr/](docs/adr/). Research: [docs/research.md](docs/research.md).
-- `docs/` is local-only for now (see "Workflow") and is written in Polish.
+- Plan and progress: [docs/plan.md](docs/plan.md). Tick checkboxes and the Status column once something is done and verified, in the same pull request as the change ([ADR-0017](docs/adr/0017-plan-checklists-until-issues.md)).
+- Decisions: [docs/adr/](docs/adr/). A new decision is a new ADR plus a row in [docs/adr/README.md](docs/adr/README.md), committed with the code it concerns.
+- `docs/` is committed and written in English ([ADR-0014](docs/adr/0014-docs-in-repo.md)). The only exception is `docs/research.md`, a local Polish notebook excluded via `.git/info/exclude`; never commit it.
 
 ## Rules that require a new ADR to break
 
@@ -27,8 +27,8 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
 ## Workflow
 
 - **The user reviews every edit and wants to understand it.** For every file change, briefly explain (in Polish, in the chat) what you are changing, why, and how it connects to the rest of the code. Avoid large unexplained changes; split work into steps that can be read and understood one at a time.
-- **Only code and agent configuration are committed.** `docs/` (plan, research, ADRs) is excluded locally via `.git/info/exclude`. Never add it to commits.
-- **Everything committed is in English**: code, identifiers, docstrings, comments, CLI messages, commit messages, this file. Local `docs/` stays in Polish.
+- **Docs change together with the code.** A pull request that completes plan items, changes a URL template's status or makes a decision updates `docs/plan.md` and `docs/adr/` in the same pull request.
+- **Everything committed is in English**: code, identifiers, docstrings, comments, CLI messages, commit messages, docs, this file. Only the local `docs/research.md` stays in Polish.
 
 ## Commits and pull requests
 
