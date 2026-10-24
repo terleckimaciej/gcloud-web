@@ -8,10 +8,16 @@ Commands::
 A cluster is either regional or zonal, so ``{location}`` may be either. The
 default comes from ``compute/region``, since regional clusters are the usual
 choice; the resource cache supplies the real location of a named cluster.
-URL templates are unverified until checked against the real console.
+Clusters are listed with the GKE API across all locations (``locations/-``).
+URL templates and endpoints are unverified until checked against the real
+console and API.
 """
 
+from gcw.cache.store import Resource
+from gcw.context.resolve import Context
 from gcw.web.route import Route
+
+API = "https://container.googleapis.com/v1"
 
 NAME = "gke"
 HELP = "Google Kubernetes Engine clusters"
@@ -26,3 +32,11 @@ KINDS = {
         location_property=("compute", "region"),
     ),
 }
+
+
+def list_clusters(context: Context, token: str) -> list[Resource]:
+    """List clusters in all locations; each carries its zone or region in ``location``."""
+    from gcw.api.client import get_json
+
+    page = get_json(f"{API}/projects/{context.project}/locations/-/clusters", token)
+    return [Resource(cluster["name"], cluster.get("location")) for cluster in page.get("clusters", [])]

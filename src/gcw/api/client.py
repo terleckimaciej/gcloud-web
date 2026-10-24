@@ -7,7 +7,7 @@ on the completion path, because ``urllib.request`` pulls in ``ssl``.
 """
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, TypeVar
 from urllib.error import HTTPError, URLError
@@ -61,6 +61,30 @@ def get_json(url: str, token: str, params: dict[str, str] | None = None) -> dict
     return json.loads(body) if body else {}
 
 
+def iter_pages(url: str, token: str, params: dict[str, str] | None = None) -> Iterator[dict[str, Any]]:
+    """Yield every page of a paginated endpoint, following ``nextPageToken``.
+
+    Args:
+        url: Full URL of the endpoint.
+        token: OAuth access token.
+        params: Extra query parameters sent with every page.
+
+    Yields:
+        Each decoded page, in order.
+
+    Raises:
+        ApiError: Any page request failed.
+    """
+    page_params = dict(params or {})
+    while True:
+        page = get_json(url, token, page_params)
+        yield page
+        next_token = page.get("nextPageToken")
+        if not next_token:
+            return
+        page_params["pageToken"] = next_token
+
+
 def list_all(url: str, token: str, items_key: str, params: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """Fetch every page of a ``list`` endpoint and return all items.
 
@@ -76,15 +100,24 @@ def list_all(url: str, token: str, items_key: str, params: dict[str, str] | None
     Raises:
         ApiError: Any page request failed.
     """
-    items: list[dict[str, Any]] = []
-    page_params = dict(params or {})
-    while True:
-        page = get_json(url, token, page_params)
-        items.extend(page.get(items_key, []))
-        next_token = page.get("nextPageToken")
-        if not next_token:
-            return items
-        page_params["pageToken"] = next_token
+    return [item for page in iter_pages(url, token, params) for item in page.get(items_key, [])]
+
+
+def path_segment(resource_name: str, collection: str) -> str | None:
+    """Return the value that follows ``collection`` in a resource name.
+
+    Example: ``path_segment("projects/p/locations/eu1/services/api", "locations")``
+    returns ``"eu1"``. Also works on self links such as
+    ``"https://.../zones/eu1-b"``.
+
+    Returns:
+        The segment, or ``None`` if ``collection`` is not in the name.
+    """
+    parts = resource_name.split("/")
+    for index, part in enumerate(parts[:-1]):
+        if part == collection:
+            return parts[index + 1]
+    return None
 
 
 def run_parallel(tasks: dict[str, Callable[[], T]]) -> dict[str, T | Exception]:

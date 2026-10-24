@@ -15,7 +15,11 @@ Every service module defines:
     LANDING   console path opened by ``gcw <NAME>`` alone
     KINDS     resource kinds, ``{"services": Route(...), ...}``
 
-and may define:
+and, for every kind, a listing function named after it (``-`` becomes ``_``)::
+
+    def list_<kind>(context: Context, token: str) -> list[Resource]
+
+It may define:
 
     SINGLE_KIND   ``True`` when the service has exactly one kind that the user
                   never types (``gcw secrets NAME``, ADR-0012); default ``False``
@@ -27,6 +31,7 @@ Services that only have a start page live in ``landing`` instead, as entries of
 module or a landing page, never both (checked by the tests).
 """
 
+from collections.abc import Callable
 from types import ModuleType
 
 from gcw.services import (
@@ -55,4 +60,9 @@ def is_single_kind(module: ModuleType) -> bool:
     return getattr(module, "SINGLE_KIND", False)
 
 
-__all__ = ["LANDINGS", "SERVICES", "Landing", "is_single_kind"]
+def lister(module: ModuleType, kind: str) -> Callable:
+    """Return the ``list_<kind>`` function that fetches resources of ``kind``."""
+    return getattr(module, f"list_{kind.replace('-', '_')}")
+
+
+__all__ = ["LANDINGS", "SERVICES", "Landing", "is_single_kind", "lister"]

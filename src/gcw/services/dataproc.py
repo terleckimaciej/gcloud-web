@@ -9,10 +9,18 @@ Commands::
 
 Cluster and job pages take the region as a query parameter; ``gcw.web.url``
 appends ``project`` to it. The region defaults to ``dataproc/region``.
-URL templates are unverified until checked against the real console.
+
+The Dataproc API has no cross-region listing, so resources are listed in one
+region only: ``dataproc/region``, else ``compute/region``; with neither set the
+lists are empty. URL templates and endpoints are unverified until checked
+against the real console and API.
 """
 
+from gcw.cache.store import Resource
+from gcw.context.resolve import Context
 from gcw.web.route import Route
+
+API = "https://dataproc.googleapis.com/v1"
 
 NAME = "dataproc"
 HELP = "Dataproc clusters, batches and jobs"
@@ -36,3 +44,41 @@ KINDS = {
         location_property=("dataproc", "region"),
     ),
 }
+
+
+def list_clusters(context: Context, token: str) -> list[Resource]:
+    """List clusters in the configured region."""
+    from gcw.api.client import list_all
+
+    region = _region(context)
+    if region is None:
+        return []
+    items = list_all(f"{API}/projects/{context.project}/regions/{region}/clusters", token, "clusters")
+    return [Resource(item["clusterName"], region) for item in items]
+
+
+def list_batches(context: Context, token: str) -> list[Resource]:
+    """List serverless batches in the configured region; names end with the batch ID."""
+    from gcw.api.client import list_all
+
+    region = _region(context)
+    if region is None:
+        return []
+    items = list_all(f"{API}/projects/{context.project}/locations/{region}/batches", token, "batches")
+    return [Resource(item["name"].rsplit("/", 1)[-1], region) for item in items]
+
+
+def list_jobs(context: Context, token: str) -> list[Resource]:
+    """List jobs in the configured region; the ID is in ``reference.jobId``."""
+    from gcw.api.client import list_all
+
+    region = _region(context)
+    if region is None:
+        return []
+    items = list_all(f"{API}/projects/{context.project}/regions/{region}/jobs", token, "jobs")
+    return [Resource(item["reference"]["jobId"], region) for item in items]
+
+
+def _region(context: Context) -> str | None:
+    """Return the region to list in: ``dataproc/region``, else ``compute/region``."""
+    return context.config.get("dataproc", "region") or context.config.get("compute", "region")
