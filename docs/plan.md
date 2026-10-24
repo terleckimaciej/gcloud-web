@@ -154,7 +154,7 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [ ] completion budget: measured ~70 ms (median of 20, Python 3.12) against the 50 ms target. Python itself starts in ~15 ms; `dataclasses` (via `inspect`) costs ~25 ms, then `json`/`re`, `typing`, `pathlib`. Kept for the prototype; after the demo replace dataclasses on the completion path (`Route`, `Link`, `Landing`, `Resource`, `CacheEntry`, `GcloudConfig`, `Context`) and add a lean entry point that does not import `cli/main.py`
 
 ### M5: release
-- [ ] README (installation with `uv tool install` / `pipx`, completion, adding routes, WSL: `BROWSER=wslview`)
+- [x] README (installation with `uv tool install` / `pipx`, completion, usage, how resources are found, security, platforms incl. WSL `BROWSER=wslview`, development)
 - [ ] `~/.config/gcw/routes.toml`: user overrides
 
 ## Stage 2 (after the MVP)
@@ -162,7 +162,7 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - Wizard: a picker (fzf, if available) on the same cache as TAB.
 - TAB completion in PowerShell: `Register-ArgumentCompleter` calling `gcw __complete` (ADR-0013).
 - Cloud Asset Inventory as an optional speed-up with autodetection (worth revisiting).
-- `gcloud … --web`: translating commands in gcloud syntax into URLs.
+- `gcw gcloud …`: translating a gcloud command line into a gcw command (drop the verb, map the context flags), plus a README recipe for the user's own `gcloud … --web` shell function ([ADR-0020](adr/0020-gcloud-syntax-input.md), Proposed).
 - A route generator based on `resources.yaml` / `resources.py` from the gcloud code.
 - `gcw-<name>` plugins on PATH (modelled on gh extensions).
 - `gcw last`: the URL from the output of the last gcloud command.
