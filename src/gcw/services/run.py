@@ -6,9 +6,10 @@ Commands::
     gcw run services [NAME]        list of services, or one service (tabs below)
     gcw run jobs [NAME]            list of jobs, or one job (tabs below)
 
-Resources are listed with the Cloud Run Admin API v2 across all regions
-(``locations/-``). URL templates and endpoints are unverified until checked
-against the real console and API.
+Resources are listed with the Cloud Run Admin API v2. Services are listed
+across all regions with ``locations/-``; jobs reject that (HTTP 400), so they
+are listed region by region, with the regions taken from the v1 API. URL
+templates are unverified until checked against the real console.
 """
 
 from gcw.cache.store import Resource
@@ -16,6 +17,7 @@ from gcw.context.resolve import Context
 from gcw.web.route import Route
 
 API = "https://run.googleapis.com/v2"
+LOCATIONS = "https://run.googleapis.com/v1/projects/{project}/locations"
 
 NAME = "run"
 HELP = "Cloud Run services and jobs"
@@ -38,18 +40,21 @@ KINDS = {
 
 
 def list_services(context: Context, token: str) -> list[Resource]:
-    """List Cloud Run services in all regions of the project."""
-    return _list(context, token, "services")
+    """List Cloud Run services in all regions; names look like ``projects/p/locations/r/services/s``."""
+    from gcw.api.client import list_all, path_segment
+
+    items = list_all(f"{API}/projects/{context.project}/locations/-/services", token, "services")
+    return [Resource(item["name"].rsplit("/", 1)[-1], path_segment(item["name"], "locations")) for item in items]
 
 
 def list_jobs(context: Context, token: str) -> list[Resource]:
-    """List Cloud Run jobs in all regions of the project."""
-    return _list(context, token, "jobs")
+    """List Cloud Run jobs region by region, since jobs cannot be listed with ``locations/-``."""
+    from gcw.api.client import list_per_location
 
-
-def _list(context: Context, token: str, collection: str) -> list[Resource]:
-    """List one collection; names look like ``projects/p/locations/r/services/s``."""
-    from gcw.api.client import list_all, path_segment
-
-    items = list_all(f"{API}/projects/{context.project}/locations/-/{collection}", token, collection)
-    return [Resource(item["name"].rsplit("/", 1)[-1], path_segment(item["name"], "locations")) for item in items]
+    found = list_per_location(
+        LOCATIONS.format(project=context.project),
+        f"{API}/projects/{context.project}/locations/{{location}}/jobs",
+        token,
+        "jobs",
+    )
+    return [Resource(item["name"].rsplit("/", 1)[-1], location) for location, item in found]

@@ -71,13 +71,18 @@ def test_run_services_across_regions(api):
     assert listing("run", "services") == [Resource("api", "europe-west1"), Resource("worker", "us-central1")]
 
 
-def test_run_jobs_follow_pagination(api):
-    """Every page of a paginated list is fetched."""
-    api["https://run.googleapis.com/v2/projects/my-prj/locations/-/jobs"] = [
+def test_run_jobs_region_by_region(api):
+    """Jobs reject ``locations/-``, so regions come from v1 and are listed one by one, every page."""
+    api["https://run.googleapis.com/v1/projects/my-prj/locations"] = {
+        "locations": [{"locationId": "eu1"}, {"locationId": "us1"}]
+    }
+    api["https://run.googleapis.com/v2/projects/my-prj/locations/eu1/jobs"] = [
         {"jobs": [{"name": "projects/my-prj/locations/eu1/jobs/a"}], "nextPageToken": "t"},
         {"jobs": [{"name": "projects/my-prj/locations/eu1/jobs/b"}]},
     ]
-    assert [r.name for r in listing("run", "jobs")] == ["a", "b"]
+    api["https://run.googleapis.com/v2/projects/my-prj/locations/us1/jobs"] = {}
+
+    assert listing("run", "jobs") == [Resource("a", "eu1"), Resource("b", "eu1")]
 
 
 def test_functions(api):

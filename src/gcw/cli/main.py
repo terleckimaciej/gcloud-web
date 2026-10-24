@@ -10,6 +10,8 @@ command. Commands::
         [-l LOCATION] [--tab TAB]
     gcw SERVICE [NAME]                   the same for a service with a single kind
     gcw SERVICE                          start page of a service that has no routes yet
+    gcw refresh [SERVICE [KIND]]         fetch resource names into the local cache
+    gcw ls [SERVICE [KIND]]              show the cached resources
 
 Service commands are generated from the two registries in ``gcw.services``:
 modules with routes (``SERVICES``) and start pages (``LANDINGS``).
@@ -41,6 +43,8 @@ examples:
   gcw bigquery                       the BigQuery start page
   gcw pubsub -p other-project        Pub/Sub in another project
   gcw open iam-admin/iam -n          print the URL of any console path
+  gcw refresh                        cache resource names for TAB completion
+  gcw ls run                         show the cached Cloud Run resources
 
 Many more services have a start page like `gcw bigquery`.
 Run `gcw services` for the full list.\
@@ -121,6 +125,16 @@ def _add_service_command(commands, module: ModuleType) -> None:
     command.set_defaults(service=module)
 
 
+def _add_cache_command(commands, name: str, help: str) -> argparse.ArgumentParser:
+    """Add ``gcw refresh`` or ``gcw ls``: global flags and an optional ``SERVICE [KIND]`` filter."""
+    command = commands.add_parser(name, help=help, description=help)
+    _add_global_flags(command, with_defaults=False)
+    command.add_argument("filter_service", nargs="?", choices=list(SERVICES), metavar="SERVICE",
+                         help="only this service (default: all services with resources)")
+    command.add_argument("filter_kind", nargs="?", metavar="KIND", help="only this resource kind of SERVICE")
+    return command
+
+
 def _add_landing_command(commands, name: str, landing: Landing) -> None:
     """Add ``gcw <service>`` for one service that only has a start page.
 
@@ -157,6 +171,10 @@ def build_parser() -> argparse.ArgumentParser:
     open_command.add_argument("path", help="path after console.cloud.google.com/")
     # Needs no context, so it takes no global flags.
     commands.add_parser("services", help="list the supported services, kinds and tabs")
+    refresh_command = _add_cache_command(commands, "refresh", "fetch resource names into the local cache")
+    # Used by the detached process that refreshes a stale cache; not for users.
+    refresh_command.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
+    _add_cache_command(commands, "ls", "show the cached resources")
     for module in SERVICES.values():
         _add_service_command(commands, module)
     for name, landing in LANDINGS.items():
@@ -257,6 +275,18 @@ def _open_or_print(path: str, context: Context, *, no_browser: bool, with_authus
     return 0
 
 
+def _cache_command(args: argparse.Namespace, context: Context) -> int:
+    """Run ``gcw refresh`` or ``gcw ls``, which need a project but open no URL."""
+    if context.project is None:
+        print("gcw: no project set (use -p or `gcloud config set project`)", file=sys.stderr)
+        return 2
+    from gcw.cli.resources import ls_command, refresh_command
+
+    if args.command == "ls":
+        return ls_command(context, args.filter_service, args.filter_kind)
+    return refresh_command(context, args.filter_service, args.filter_kind, background=args.background)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI.
 
@@ -274,9 +304,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command in SERVICES and args.name is None and (args.location or args.tab):
         parser.error("--location and --tab require a resource NAME")
+    if args.command in ("refresh", "ls") and args.filter_kind is not None:
+        kinds = SERVICES[args.filter_service].KINDS
+        if args.filter_kind not in kinds:
+            parser.error(f"unknown kind {args.filter_kind!r} of {args.filter_service} (available: {', '.join(kinds)})")
 
     try:
         context = resolve_context(project=args.project, configuration=args.configuration)
+        if args.command in ("refresh", "ls"):
+            return _cache_command(args, context)
         if args.command == "open":
             path = args.path
         elif args.command in SERVICES:

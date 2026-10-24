@@ -138,12 +138,13 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] `api/auth.py`: token from `gcloud auth print-access-token --account` (ADR-0016), found with `shutil.which` (`gcloud.cmd` on Windows), remembered per process
 - [x] `api/client.py`: GET JSON over `urllib`, `nextPageToken` pagination, `run_parallel` with a per-task error
 - [ ] `GCW_FAST_TOKEN=1`: the `access_tokens.db` opt-in from ADR-0016 (deferred past the prototype)
-- [x] `list_<kind>(context, token)` functions in the service modules for every kind, returning `Resource(name, location, extra)` from `cache/store.py`; `services.lister()` finds them. Endpoints are unverified until a refresh is run against a real project
+- [x] `list_<kind>(context, token)` functions in the service modules for every kind, returning `Resource(name, location, extra)` from `cache/store.py`; `services.lister()` finds them. Checked with `gcw refresh` on a real project: Run services, Compute, SQL, Storage, Secrets, Artifact Registry and IAM answer as expected; Run jobs rejected `locations/-` (HTTP 400) and are now listed region by region (confirmed: the job is found). Still unverified: Functions and GKE (APIs disabled in that project), Dataproc and Composer (no resources there)
 - [ ] Dataproc and Composer list one region only (`dataproc/region` / `composer/location`, else `compute/region`), because their APIs have no `locations/-`; consider listing all regions in the background later
-- [ ] `cache/store.py` + `cache/refresh.py`: atomic writes, 24 h soft TTL, background refresh, `gcw refresh`, `gcw ls`
+- [x] `cache/store.py` + `cache/refresh.py`: atomic writes, 24 h soft TTL, `spawn_background` (detached `python -m gcw refresh --background`, 5-minute lock), `gcw refresh [SERVICE [KIND]]`, `gcw ls [SERVICE [KIND]]`; tests isolate the cache with `GCW_CACHE_DIR`
+- [ ] start the background refresh when a command uses a stale or missing cache entry (with the lookup below)
 - [ ] live lookup when missing from the cache, then added to it
 - [ ] location of a named resource from the cache before `config`: `-l` → env → cache (with several hits for the same name, `config` breaks the tie) → `config`. Lists and start pages are unchanged, because there is no name there and `config` is the right answer
-- [ ] Windows: `shutil.which("gcloud")` (`gcloud.cmd`), detaching the refresh process on Windows, cache directory `%LOCALAPPDATA%\gcw` (ADR-0013)
+- [x] Windows in code: `shutil.which("gcloud")` (`gcloud.cmd`), `DETACHED_PROCESS` for the refresh process, cache directory `%LOCALAPPDATA%\gcw` (ADR-0013); not yet tried on a real Windows machine
 
 ### M4: completion and switching
 - [ ] `__complete` + bash/zsh/fish scripts with descriptions

@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 _TIMEOUT_SECONDS = 30
 _MAX_WORKERS = 8
 
+K = TypeVar("K")
 T = TypeVar("T")
 
 
@@ -103,6 +104,42 @@ def list_all(url: str, token: str, items_key: str, params: dict[str, str] | None
     return [item for page in iter_pages(url, token, params) for item in page.get(items_key, [])]
 
 
+def list_per_location(
+    locations_url: str, list_url: str, token: str, items_key: str
+) -> list[tuple[str, dict[str, Any]]]:
+    """List a collection in every location, for APIs that cannot aggregate with ``locations/-``.
+
+    First fetches the locations, then lists each one in parallel. A location
+    that fails is skipped; if every location fails, the first error is raised.
+
+    Args:
+        locations_url: Endpoint listing the locations; items have ``locationId``.
+        list_url: Endpoint listing the collection, with a ``{location}`` placeholder.
+        token: OAuth access token.
+        items_key: Field holding the items in each page of ``list_url``.
+
+    Returns:
+        ``(location, item)`` pairs for every item found.
+
+    Raises:
+        ApiError: The locations could not be listed, or no location answered.
+    """
+    locations = [item["locationId"] for item in list_all(locations_url, token, "locations")]
+    results = run_parallel({
+        location: (lambda location=location: list_all(list_url.format(location=location), token, items_key))
+        for location in locations
+    })
+    errors = [result for result in results.values() if isinstance(result, Exception)]
+    if errors and len(errors) == len(results):
+        raise errors[0]
+    return [
+        (location, item)
+        for location, items in results.items()
+        if not isinstance(items, Exception)
+        for item in items
+    ]
+
+
 def path_segment(resource_name: str, collection: str) -> str | None:
     """Return the value that follows ``collection`` in a resource name.
 
@@ -120,7 +157,7 @@ def path_segment(resource_name: str, collection: str) -> str | None:
     return None
 
 
-def run_parallel(tasks: dict[str, Callable[[], T]]) -> dict[str, T | Exception]:
+def run_parallel(tasks: dict[K, Callable[[], T]]) -> dict[K, T | Exception]:
     """Run independent tasks in threads and collect each result or exception.
 
     A failing task does not stop the others: its exception is returned in
@@ -136,7 +173,7 @@ def run_parallel(tasks: dict[str, Callable[[], T]]) -> dict[str, T | Exception]:
         return {}
     with ThreadPoolExecutor(max_workers=min(_MAX_WORKERS, len(tasks))) as pool:
         futures = {key: pool.submit(task) for key, task in tasks.items()}
-    results: dict[str, T | Exception] = {}
+    results: dict[K, T | Exception] = {}
     for key, future in futures.items():
         error = future.exception()
         results[key] = error if error is not None else future.result()
