@@ -2,7 +2,7 @@
 
 ``refresh`` fetches resources with the listing functions it is given (the
 cache layer does not import ``services``; the CLI passes them in) and writes
-every successful result. ``spawn_background`` runs ``gcw refresh`` as a
+every successful result. ``spawn_background`` runs ``gcw cache refresh`` as a
 detached process, so a stale cache is refreshed without the user waiting
 (ADR-0006). Never used on the completion path, which must not spawn processes.
 """
@@ -65,7 +65,7 @@ def release_lock(account: str | None, project: str) -> None:
 
 
 def spawn_background(context: Context, service: str | None = None, kind: str | None = None) -> bool:
-    """Start ``gcw refresh --background`` as a detached process, unless one is running.
+    """Start ``gcw cache refresh --background`` as a detached process, unless one is running.
 
     The child gets the same gcloud configuration and project, has no terminal
     and outlives this process. It removes the lock when it finishes.
@@ -88,7 +88,7 @@ def spawn_background(context: Context, service: str | None = None, kind: str | N
     lock.parent.mkdir(parents=True, exist_ok=True)
     lock.touch()
 
-    command = [sys.executable, "-m", "gcw", "refresh", "--background",
+    command = [sys.executable, "-m", "gcw", "cache", "refresh", "--background",
                "-c", context.config.name, "-p", context.project]
     command += [part for part in (service, kind) if part]
     options: dict = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}

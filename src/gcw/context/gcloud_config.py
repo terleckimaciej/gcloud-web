@@ -70,6 +70,15 @@ class GcloudConfig:
         value = from_env if from_env is not None else self.properties.get((section, name))
         return value or None
 
+    @staticmethod
+    def from_environment(section: str, name: str) -> str | None:
+        """Return only the ``$CLOUDSDK_<SECTION>_<NAME>`` override of a property, ignoring the file.
+
+        Resource locations need the two sources apart: an environment override
+        wins over the resource cache, the configuration file does not.
+        """
+        return os.environ.get(f"CLOUDSDK_{section}_{name}".upper()) or None
+
     @property
     def account(self) -> str | None:
         """The ``core/account`` property: the Google account gcloud acts as."""

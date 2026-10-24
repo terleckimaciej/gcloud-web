@@ -1,4 +1,4 @@
-"""Tests for the resource cache: storage, refreshing, the background process, ``gcw refresh`` and ``gcw ls``.
+"""Tests for the resource cache: storage, refreshing, the background process, ``gcw cache refresh`` and ``gcw cache list``.
 
 The cache directory is a temporary one (``GCW_CACHE_DIR`` from conftest). The
 access token and listing functions are faked, so nothing touches the network.
@@ -20,6 +20,9 @@ from gcw.context.resolve import Context
 from gcw.services import run
 
 ACCOUNT = "me@example.com"
+
+# Captured at import, before conftest's ``offline`` fixture replaces it.
+REAL_SPAWN_BACKGROUND = refresh.spawn_background
 
 
 @pytest.fixture(autouse=True)
@@ -125,16 +128,16 @@ def test_refresh_caches_successes_and_reports_failures(token):
 
 
 def test_spawn_background_starts_one_detached_refresh(monkeypatch):
-    """The child runs ``gcw refresh --background`` for the same context; a second spawn waits for the lock."""
+    """The child runs ``gcw cache refresh --background`` for the same context; a second spawn waits for the lock."""
     started = []
     monkeypatch.setattr(refresh.subprocess, "Popen", lambda command, **options: started.append((command, options)))
 
-    assert refresh.spawn_background(context(), "run", "services") is True
-    assert refresh.spawn_background(context(), "run", "services") is False
+    assert REAL_SPAWN_BACKGROUND(context(), "run", "services") is True
+    assert REAL_SPAWN_BACKGROUND(context(), "run", "services") is False
 
     command, options = started[0]
     assert len(started) == 1
-    assert command[1:] == ["-m", "gcw", "refresh", "--background", "-c", "default", "-p", "my-prj", "run", "services"]
+    assert command[1:] == ["-m", "gcw", "cache", "refresh", "--background", "-c", "default", "-p", "my-prj", "run", "services"]
     assert options["stdout"] is refresh.subprocess.DEVNULL
     assert refresh.lock_path(ACCOUNT, "my-prj").exists()
 
@@ -148,10 +151,10 @@ def test_old_lock_does_not_block_a_new_refresh(monkeypatch):
     old = time.time() - refresh.LOCK_SECONDS - 1
     refresh.os.utime(lock, (old, old))
 
-    assert refresh.spawn_background(context()) is True
+    assert REAL_SPAWN_BACKGROUND(context()) is True
 
 
-# gcw refresh / gcw ls
+# gcw cache refresh / gcw cache list
 
 
 @pytest.fixture
@@ -162,8 +165,8 @@ def fake_run_listing(monkeypatch, token):
 
 
 def test_refresh_command_reports_counts(capsys, fake_run_listing):
-    """``gcw refresh run`` caches both kinds and prints how many of each."""
-    assert main(["refresh", "run"]) == 0
+    """``gcw cache refresh run`` caches both kinds and prints how many of each."""
+    assert main(["cache", "refresh", "run"]) == 0
 
     out = capsys.readouterr().out
     assert "Refreshed project my-prj:" in out
@@ -179,7 +182,7 @@ def test_refresh_command_reports_skipped_kind_in_one_line(capsys, monkeypatch, t
 
     monkeypatch.setattr(run, "list_services", disabled)
 
-    assert main(["refresh", "run", "services"]) == 1
+    assert main(["cache", "refresh", "run", "services"]) == 1
     assert "run services  skipped: HTTP 403: Cloud Run Admin API has not been used." in capsys.readouterr().out
 
 
@@ -192,7 +195,7 @@ def test_refresh_command_without_credentials(capsys, monkeypatch):
 
     monkeypatch.setattr(auth, "access_token", no_token)
 
-    assert main(["refresh", "run"]) == 1
+    assert main(["cache", "refresh", "run"]) == 1
     assert "gcloud auth login" in capsys.readouterr().err
 
 
@@ -202,7 +205,7 @@ def test_background_refresh_is_silent_and_releases_lock(capsys, fake_run_listing
     lock.parent.mkdir(parents=True)
     lock.touch()
 
-    assert main(["refresh", "--background", "run"]) == 0
+    assert main(["cache", "refresh", "--background", "run"]) == 0
 
     assert capsys.readouterr().out == ""
     assert not lock.exists()
@@ -211,38 +214,65 @@ def test_background_refresh_is_silent_and_releases_lock(capsys, fake_run_listing
 def test_unknown_kind_filter_is_rejected(capsys):
     """A kind that the service does not have is a parser error."""
     with pytest.raises(SystemExit):
-        main(["ls", "run", "buckets"])
+        main(["cache", "ls", "run", "buckets"])
     assert "unknown kind 'buckets' of run (available: services, jobs)" in capsys.readouterr().err
 
 
 def test_ls_prints_cached_table(capsys, fake_run_listing):
-    """``gcw ls`` shows name, location and kind of every cached resource."""
-    main(["refresh", "run"])
+    """``gcw cache ls`` shows kind, location and name of every cached resource."""
+    main(["cache", "refresh", "run"])
     capsys.readouterr()
 
-    assert main(["ls"]) == 0
+    assert main(["cache", "ls"]) == 0
 
     assert capsys.readouterr().out.splitlines() == [
-        "NAME     LOCATION  KIND",
-        "api      eu1       run services",
-        "web      us1       run services",
-        "nightly  eu1       run jobs",
+        "KIND          LOCATION  NAME",
+        "run services  eu1       api",
+        "run services  us1       web",
+        "run jobs      eu1       nightly",
     ]
 
 
-def test_ls_with_empty_cache_suggests_refresh(capsys):
-    """Nothing cached: exit 1 and a hint."""
-    assert main(["ls"]) == 1
-    assert "run `gcw refresh`" in capsys.readouterr().err
+def test_ls_labels_single_kind_services_by_service_name(capsys):
+    """A secret is listed as ``secrets``, the way it is typed, not ``secrets secrets``."""
+    store.write(ACCOUNT, "my-prj", "secrets", "secrets", [Resource("db-password")])
+
+    assert main(["cache", "ls", "secrets"]) == 0
+    assert capsys.readouterr().out.splitlines()[1] == "secrets  -         db-password"
 
 
-def test_ls_warns_about_stale_entries(capsys):
-    """Entries older than the soft TTL are shown with a warning."""
+def test_list_and_ls_are_the_same_action(capsys):
+    """``gcw cache ls`` is an alias of ``gcw cache list``."""
+    store.write(ACCOUNT, "my-prj", "sql", "instances", [Resource("db", "eu1")])
+
+    main(["cache", "list"])
+    full = capsys.readouterr().out
+    main(["cache", "ls"])
+    assert capsys.readouterr().out == full != ""
+
+
+def test_cache_requires_an_action(capsys):
+    """``gcw cache`` alone is a parser error naming the actions."""
+    with pytest.raises(SystemExit):
+        main(["cache"])
+    assert "required: ACTION" in capsys.readouterr().err
+
+
+def test_ls_with_empty_cache_refreshes_in_background(capsys, offline):
+    """Nothing cached: exit 1, a background refresh of the selection, and a hint."""
+    assert main(["cache", "ls", "run"]) == 1
+    assert offline == [("run", None)]
+    assert "fetching them in the background" in capsys.readouterr().err
+
+
+def test_ls_refreshes_stale_entries_in_background(capsys, offline):
+    """Entries older than the soft TTL are shown, refreshed in the background, with a note."""
     path = store.entry_path(ACCOUNT, "my-prj", "sql", "instances")
     path.parent.mkdir(parents=True)
     path.write_text(json.dumps({"fetched_at": 0, "resources": [{"name": "db", "location": "eu1"}]}))
 
-    assert main(["ls", "sql"]) == 0
+    assert main(["cache", "ls", "sql"]) == 0
     captured = capsys.readouterr()
     assert "db" in captured.out
     assert "older than 24 hours" in captured.err
+    assert offline == [("sql", None)]

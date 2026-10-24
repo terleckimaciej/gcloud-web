@@ -30,8 +30,8 @@ Rule: **gcw navigates, gcloud operates** ([ADR-0004](adr/0004-navigation-only.md
 - `-l/--location` (aliases `--region`, `--zone`): the resource's region or zone. By default from the gcloud property named by the route (e.g. `run/region`), and from M3 from the cache.
 - Global flags, working before and after the command: `-p/--project`, `-c/--configuration`, `-n/--no-browser` (only print the URL, as in `gh browse`), `--no-authuser`. No `--copy`: `gcw -n | wl-copy` (or `clip.exe`) is enough for the clipboard.
 - `gcw open <path>`: any console path with the context appended.
-- `gcw ls [type]`: a table from the cache (name, location, project).
-- `gcw refresh [type]`: forced cache refresh.
+- `gcw cache list [SERVICE [KIND]]` (alias `ls`): a table from the cache (kind, location, name) ([ADR-0018](adr/0018-cache-commands.md)).
+- `gcw cache refresh [SERVICE [KIND]]`: forced cache refresh.
 - `gcw services`: the list of supported services and routes.
 - `gcw completion bash|zsh|fish` and the hidden `gcw __complete …`.
 - `gcw env <config>`: exports `CLOUDSDK_ACTIVE_CONFIG_NAME`, i.e. switches the configuration in the current shell only.
@@ -58,7 +58,7 @@ Status: ☐ not implemented · 🔧 implemented, template unverified · ✅ veri
 | `gcw dataproc batches [id]` | L1 | `dataproc/batches/{location}/{name}` | 🔧 |
 | `gcw dataproc jobs [id]` | L1 | `dataproc/jobs/{name}?region={location}` | 🔧 |
 | `gcw composer environments [env] [--tab monitoring\|logs\|dags]` | L2 | `composer/environments/detail/{location}/{name}/{tab}` | 🔧 |
-| `gcw composer environments env --airflow` | L1 | `config.airflowUri` from the cache | ☐ |
+| `gcw composer environments env --airflow` | L1 | `config.airflowUri` from the cache (`LINKS` in the module) | 🔧 |
 | `gcw logs [run\|gke\|sql\|functions <name>] [--query Q]` | L1 | `logs/query;query={filter}` (a separate case, to be designed) | ☐ |
 | `gcw iam [service-accounts EMAIL]` | L0/L1 | `iam-admin/iam`, `iam-admin/serviceaccounts/details/{name}` | 🔧 |
 | `gcw <service>` (55 start pages) | L0 | a static list in `services/landing.py` | 🔧 |
@@ -128,7 +128,7 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] `services/run.py`: Cloud Run (services, jobs)
 - [x] `services/landing.py`: L0 start pages (55 services, hidden in `gcw --help`, with examples in the `epilog`); short aliases `-r/--region`, `-z/--zone`
 - [x] `gcw services`: the list of supported services, kinds and tabs, in two sections (with routes / start pages only)
-- [x] `cli/pager.py`: long output through `$PAGER` (`GCW_PAGER` → `PAGER` → `less`), only when stdout is a terminal; `gcw ls` will use it too
+- [x] `cli/pager.py`: long output through `$PAGER` (`GCW_PAGER` → `PAGER` → `less`), only when stdout is a terminal; `gcw cache list` uses it too
 - [x] single-kind services in the registry and parser (`gcw secrets NAME`, ADR-0012): the module's `SINGLE_KIND` attribute
 - [x] the remaining service modules with routes (no `list_*` yet): functions, compute, gke, sql, storage, secrets, artifacts, dataproc, composer, iam
 - [x] URL tests for every route (`tests/test_services.py`)
@@ -138,12 +138,12 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] `api/auth.py`: token from `gcloud auth print-access-token --account` (ADR-0016), found with `shutil.which` (`gcloud.cmd` on Windows), remembered per process
 - [x] `api/client.py`: GET JSON over `urllib`, `nextPageToken` pagination, `run_parallel` with a per-task error
 - [ ] `GCW_FAST_TOKEN=1`: the `access_tokens.db` opt-in from ADR-0016 (deferred past the prototype)
-- [x] `list_<kind>(context, token)` functions in the service modules for every kind, returning `Resource(name, location, extra)` from `cache/store.py`; `services.lister()` finds them. Checked with `gcw refresh` on a real project: Run services, Compute, SQL, Storage, Secrets, Artifact Registry and IAM answer as expected; Run jobs rejected `locations/-` (HTTP 400) and are now listed region by region (confirmed: the job is found). Still unverified: Functions and GKE (APIs disabled in that project), Dataproc and Composer (no resources there)
+- [x] `list_<kind>(context, token)` functions in the service modules for every kind, returning `Resource(name, location, extra)` from `cache/store.py`; `services.lister()` finds them. Checked with `gcw cache refresh` on a real project: Run services, Compute, SQL, Storage, Secrets, Artifact Registry and IAM answer as expected; Run jobs rejected `locations/-` (HTTP 400) and are now listed region by region (confirmed: the job is found). Still unverified: Functions and GKE (APIs disabled in that project), Dataproc and Composer (no resources there)
 - [ ] Dataproc and Composer list one region only (`dataproc/region` / `composer/location`, else `compute/region`), because their APIs have no `locations/-`; consider listing all regions in the background later
-- [x] `cache/store.py` + `cache/refresh.py`: atomic writes, 24 h soft TTL, `spawn_background` (detached `python -m gcw refresh --background`, 5-minute lock), `gcw refresh [SERVICE [KIND]]`, `gcw ls [SERVICE [KIND]]`; tests isolate the cache with `GCW_CACHE_DIR`
-- [ ] start the background refresh when a command uses a stale or missing cache entry (with the lookup below)
-- [ ] live lookup when missing from the cache, then added to it
-- [ ] location of a named resource from the cache before `config`: `-l` → env → cache (with several hits for the same name, `config` breaks the tie) → `config`. Lists and start pages are unchanged, because there is no name there and `config` is the right answer
+- [x] `cache/store.py` + `cache/refresh.py`: atomic writes, 24 h soft TTL, `spawn_background` (detached `python -m gcw cache refresh --background`, 5-minute lock), `gcw cache refresh [SERVICE [KIND]]`, `gcw cache list [SERVICE [KIND]]` (named `gcw refresh` / `gcw ls` until ADR-0018); tests isolate the cache with `GCW_CACHE_DIR`
+- [x] start the background refresh when a command uses a stale entry (`gcw <service> <kind> NAME`, `gcw cache list`); `gcw cache list` on an empty cache starts one too
+- [x] live lookup when the kind or name is missing from the cache, then cached; a failed lookup warns and falls back to the configuration (`cli/lookup.py`)
+- [x] location of a named resource from the cache before `config`: `-l` → env → cache (with several hits for the same name, `config` breaks the tie) → `config`. Lists and start pages are unchanged, because there is no name there and `config` is the right answer
 - [x] Windows in code: `shutil.which("gcloud")` (`gcloud.cmd`), `DETACHED_PROCESS` for the refresh process, cache directory `%LOCALAPPDATA%\gcw` (ADR-0013); not yet tried on a real Windows machine
 
 ### M4: completion and switching

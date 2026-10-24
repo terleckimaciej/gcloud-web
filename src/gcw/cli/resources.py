@@ -1,4 +1,4 @@
-"""The ``gcw refresh`` and ``gcw ls`` commands: filling the resource cache and showing it.
+"""The ``gcw cache refresh`` and ``gcw cache list`` commands: filling the resource cache and showing it.
 
 Both take an optional ``SERVICE [KIND]`` filter; without it they cover every
 kind of every service in ``gcw.services``. Imported lazily by ``gcw.cli.main``,
@@ -9,7 +9,7 @@ import sys
 
 from gcw.cache import store
 from gcw.context.resolve import Context
-from gcw.services import SERVICES, lister
+from gcw.services import SERVICES, is_single_kind, lister
 
 
 def targets(service: str | None, kind: str | None) -> list[tuple[str, str]]:
@@ -63,9 +63,13 @@ def refresh_command(context: Context, service: str | None, kind: str | None, *, 
 def ls_command(context: Context, service: str | None, kind: str | None) -> int:
     """Print the cached resources of the selected kinds as a table, through the pager.
 
+    A stale or empty cache starts a background refresh (ADR-0006), so the next
+    ``gcw cache list`` shows current data without the user running ``gcw cache refresh``.
+
     Returns:
-        The exit code: 0 if anything is cached, 1 if nothing is (with a hint to refresh).
+        The exit code: 0 if anything is cached, 1 if nothing is yet.
     """
+    from gcw.cache import refresh
     from gcw.cli.pager import write_paged
 
     rows: list[tuple[str, str, str]] = []
@@ -75,17 +79,24 @@ def ls_command(context: Context, service: str | None, kind: str | None) -> int:
         if entry is None:
             continue
         stale = stale or entry.is_stale()
-        rows += [(r.name, r.location or "-", f"{s} {k}") for r in entry.resources]
+        label = s if is_single_kind(SERVICES[s]) else f"{s} {k}"
+        rows += [(label, r.location or "-", r.name) for r in entry.resources]
 
     if not rows:
-        print(f"gcw: no cached resources for project {context.project}; run `gcw refresh`", file=sys.stderr)
+        refresh.spawn_background(context, service, kind)
+        print(
+            f"gcw: no cached resources for project {context.project} yet; "
+            "fetching them in the background, try again in a moment (or run `gcw cache refresh`)",
+            file=sys.stderr,
+        )
         return 1
-    header = ("NAME", "LOCATION", "KIND")
+    header = ("KIND", "LOCATION", "NAME")
     widths = [max(len(row[i]) for row in [header, *rows]) for i in range(2)]
     lines = [f"{a.ljust(widths[0])}  {b.ljust(widths[1])}  {c}" for a, b, c in [header, *rows]]
     write_paged("\n".join(lines) + "\n")
     if stale:
-        print("gcw: some of these are older than 24 hours; run `gcw refresh` to update", file=sys.stderr)
+        refresh.spawn_background(context, service, kind)
+        print("gcw: some of these are older than 24 hours; refreshing them in the background", file=sys.stderr)
     return 0
 
 

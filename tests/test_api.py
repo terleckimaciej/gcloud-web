@@ -14,10 +14,15 @@ import pytest
 from gcw.api import auth, client
 
 
+# Captured at import, before conftest's ``offline`` fixture replaces it.
+REAL_TOKEN_FROM_GCLOUD = auth._token_from_gcloud
+
+
 @pytest.fixture(autouse=True)
 def no_cached_tokens(monkeypatch):
-    """Start every test without tokens remembered by earlier tests."""
+    """Start every test without remembered tokens, with the real token code (gcloud itself is faked)."""
     monkeypatch.setattr(auth, "_tokens", {})
+    monkeypatch.setattr(auth, "_token_from_gcloud", REAL_TOKEN_FROM_GCLOUD)
 
 
 @pytest.fixture
