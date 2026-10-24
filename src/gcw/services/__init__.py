@@ -23,6 +23,8 @@ It may define:
 
     SINGLE_KIND   ``True`` when the service has exactly one kind that the user
                   never types (``gcw secrets NAME``, ADR-0012); default ``False``
+    LINKS         pages outside the console, ``{"airflow": Link(...)}``, offered as
+                  ``--<name>`` flags; their URL comes from the cached resource
 
 To add a service, create its module and append it to the tuple below.
 

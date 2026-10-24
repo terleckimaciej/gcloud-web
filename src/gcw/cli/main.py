@@ -10,8 +10,8 @@ command. Commands::
         [-l LOCATION] [--tab TAB]
     gcw SERVICE [NAME]                   the same for a service with a single kind
     gcw SERVICE                          start page of a service that has no routes yet
-    gcw refresh [SERVICE [KIND]]         fetch resource names into the local cache
-    gcw ls [SERVICE [KIND]]              show the cached resources
+    gcw cache list [SERVICE [KIND]]      show the cached resources (alias: ls)
+    gcw cache refresh [SERVICE [KIND]]   fetch resource names into the local cache
 
 Service commands are generated from the two registries in ``gcw.services``:
 modules with routes (``SERVICES``) and start pages (``LANDINGS``).
@@ -43,8 +43,8 @@ examples:
   gcw bigquery                       the BigQuery start page
   gcw pubsub -p other-project        Pub/Sub in another project
   gcw open iam-admin/iam -n          print the URL of any console path
-  gcw refresh                        cache resource names for TAB completion
-  gcw ls run                         show the cached Cloud Run resources
+  gcw cache refresh                  cache resource names for TAB completion
+  gcw cache ls run                   show the cached Cloud Run resources
 
 Many more services have a start page like `gcw bigquery`.
 Run `gcw services` for the full list.\
@@ -122,17 +122,43 @@ def _add_service_command(commands, module: ModuleType) -> None:
     command.add_argument("-l", "--location", "-r", "--region", "-z", "--zone", dest="location",
                          help="region or zone of the resource (default: from gcloud configuration)")
     command.add_argument("--tab", help="page tab of the resource")
+    for name, link in getattr(module, "LINKS", {}).items():
+        command.add_argument(f"--{name}", dest=f"link_{name}", action="store_true", help=link.help)
     command.set_defaults(service=module)
 
 
-def _add_cache_command(commands, name: str, help: str) -> argparse.ArgumentParser:
-    """Add ``gcw refresh`` or ``gcw ls``: global flags and an optional ``SERVICE [KIND]`` filter."""
-    command = commands.add_parser(name, help=help, description=help)
+def _add_cache_commands(commands) -> None:
+    """Add ``gcw cache list`` (alias ``ls``) and ``gcw cache refresh``.
+
+    The cache is a noun among the other top-level nouns (services, ``open``,
+    ``services``); its actions are subcommands, as in ``pip cache`` or
+    ``uv cache`` (ADR-0018). Each takes the global flags and an optional
+    ``SERVICE [KIND]`` filter. The action is stored in ``cache_action``,
+    because argparse records an alias as typed (``ls``), not as ``list``.
+    """
+    cache = commands.add_parser("cache", help="show or refresh the local resource cache",
+                                description="show or refresh the local resource cache")
+    actions = cache.add_subparsers(dest="cache_command", metavar="ACTION", required=True)
+
+    list_command = actions.add_parser("list", aliases=["ls"], help="show the cached resources",
+                                      description="show the cached resources")
+    _add_cache_filter(list_command)
+    list_command.set_defaults(cache_action="list")
+
+    refresh_command = actions.add_parser("refresh", help="fetch resource names into the cache",
+                                         description="fetch resource names into the cache")
+    _add_cache_filter(refresh_command)
+    # Used by the detached process that refreshes a stale cache; not for users.
+    refresh_command.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
+    refresh_command.set_defaults(cache_action="refresh")
+
+
+def _add_cache_filter(command: argparse.ArgumentParser) -> None:
+    """Add the global flags and the optional ``SERVICE [KIND]`` filter of a cache action."""
     _add_global_flags(command, with_defaults=False)
     command.add_argument("filter_service", nargs="?", choices=list(SERVICES), metavar="SERVICE",
                          help="only this service (default: all services with resources)")
     command.add_argument("filter_kind", nargs="?", metavar="KIND", help="only this resource kind of SERVICE")
-    return command
 
 
 def _add_landing_command(commands, name: str, landing: Landing) -> None:
@@ -171,10 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     open_command.add_argument("path", help="path after console.cloud.google.com/")
     # Needs no context, so it takes no global flags.
     commands.add_parser("services", help="list the supported services, kinds and tabs")
-    refresh_command = _add_cache_command(commands, "refresh", "fetch resource names into the local cache")
-    # Used by the detached process that refreshes a stale cache; not for users.
-    refresh_command.add_argument("--background", action="store_true", help=argparse.SUPPRESS)
-    _add_cache_command(commands, "ls", "show the cached resources")
+    _add_cache_commands(commands)
     for module in SERVICES.values():
         _add_service_command(commands, module)
     for name, landing in LANDINGS.items():
@@ -215,8 +238,9 @@ def _service_path(args: argparse.Namespace, context: Context) -> str:
     ``gcw run`` gives the service overview, ``gcw run services`` the list of
     services, and ``gcw run services api`` one resource. For a single-kind
     service, ``gcw secrets db-password`` is the resource of its only kind. A
-    missing location is taken from the gcloud property declared by the route
-    (e.g. ``run/region``).
+    missing location comes from the resource cache or the gcloud configuration
+    (see ``gcw.cli.lookup``). A link flag such as ``--airflow`` gives the
+    absolute URL cached with the resource instead of a console path.
 
     Raises:
         RouteError: The resource page cannot be built (e.g. no location, unknown tab).
@@ -229,9 +253,15 @@ def _service_path(args: argparse.Namespace, context: Context) -> str:
     if args.name is None:
         return route.list_path or module.LANDING
 
-    location = args.location
-    if location is None and route.location_property:
-        location = context.config.get(*route.location_property)
+    from gcw.cli.lookup import link_url, resource_location
+
+    for link_name, link in getattr(module, "LINKS", {}).items():
+        if getattr(args, f"link_{link_name}", False):
+            if kind != link.kind:
+                raise RouteError(f"--{link_name} applies to {module.NAME} {link.kind} only")
+            return link_url(context, module.NAME, link, args.name)
+
+    location = resource_location(context, module.NAME, kind, route, args.name, args.location)
     return route.build(args.name, location=location, tab=args.tab, project=context.project)
 
 
@@ -240,10 +270,11 @@ def _open_or_print(path: str, context: Context, *, no_browser: bool, with_authus
 
     Printed URLs never carry ``authuser``, so they are safe to share. Opened
     URLs carry it (unless disabled) so the console uses the gcloud account.
+    An absolute URL (a page outside the console, e.g. Airflow) is used as is.
     If no browser can be launched, the URL is printed instead.
 
     Args:
-        path: Console path, e.g. ``"home/dashboard"``.
+        path: Console path, e.g. ``"home/dashboard"``, or an absolute URL.
         context: The resolved account and project.
         no_browser: ``-n`` was given: only print the URL.
         with_authuser: Add the ``authuser`` parameter when opening the browser.
@@ -251,21 +282,22 @@ def _open_or_print(path: str, context: Context, *, no_browser: bool, with_authus
     Returns:
         The process exit code.
     """
-    if context.project is None:
+    external = path.startswith(("https://", "http://"))
+    if context.project is None and not external:
         print(
             "gcw: warning: no project set (use -p or `gcloud config set project`); "
             "the console will show its last opened project",
             file=sys.stderr,
         )
 
-    shareable_url = console_url(path, context.project)
+    shareable_url = path if external else console_url(path, context.project)
     if no_browser:
         print(shareable_url)
         return 0
 
     from gcw.web.browser import open_url
 
-    url = console_url(path, context.project, context.account if with_authuser else None)
+    url = path if external else console_url(path, context.project, context.account if with_authuser else None)
     if not open_url(url):
         print("gcw: no browser available; open this URL manually:", file=sys.stderr)
         print(shareable_url)
@@ -276,13 +308,13 @@ def _open_or_print(path: str, context: Context, *, no_browser: bool, with_authus
 
 
 def _cache_command(args: argparse.Namespace, context: Context) -> int:
-    """Run ``gcw refresh`` or ``gcw ls``, which need a project but open no URL."""
+    """Run ``gcw cache list`` or ``gcw cache refresh``, which need a project but open no URL."""
     if context.project is None:
         print("gcw: no project set (use -p or `gcloud config set project`)", file=sys.stderr)
         return 2
     from gcw.cli.resources import ls_command, refresh_command
 
-    if args.command == "ls":
+    if args.cache_action == "list":
         return ls_command(context, args.filter_service, args.filter_kind)
     return refresh_command(context, args.filter_service, args.filter_kind, background=args.background)
 
@@ -302,16 +334,20 @@ def main(argv: list[str] | None = None) -> int:
         # Pure information about the build; no gcloud context is needed or read.
         print(_services_listing())
         return 0
-    if args.command in SERVICES and args.name is None and (args.location or args.tab):
-        parser.error("--location and --tab require a resource NAME")
-    if args.command in ("refresh", "ls") and args.filter_kind is not None:
+    if args.command in SERVICES and args.name is None:
+        links = [name for name in getattr(args.service, "LINKS", {}) if getattr(args, f"link_{name}")]
+        if links:
+            parser.error(f"--{links[0]} requires a resource NAME")
+        if args.location or args.tab:
+            parser.error("--location and --tab require a resource NAME")
+    if args.command == "cache" and args.filter_kind is not None:
         kinds = SERVICES[args.filter_service].KINDS
         if args.filter_kind not in kinds:
             parser.error(f"unknown kind {args.filter_kind!r} of {args.filter_service} (available: {', '.join(kinds)})")
 
     try:
         context = resolve_context(project=args.project, configuration=args.configuration)
-        if args.command in ("refresh", "ls"):
+        if args.command == "cache":
             return _cache_command(args, context)
         if args.command == "open":
             path = args.path

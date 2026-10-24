@@ -76,6 +76,11 @@ class Route:
                 raise RouteError(self._missing_message(field))
         return self.path.format(**values)
 
+    @property
+    def needs_location(self) -> bool:
+        """Whether the resource page needs a ``{location}``, so it is worth looking one up."""
+        return "location" in self._placeholders()
+
     def _placeholders(self) -> list[str]:
         """Return the placeholder names used in ``path``, in order."""
         return [field for _, field, _, _ in string.Formatter().parse(self.path) if field]
@@ -90,3 +95,21 @@ class Route:
         if field == "project":
             return "missing project (use -p or `gcloud config set project`)"
         return f"missing {field}"
+
+
+@dataclass(frozen=True)
+class Link:
+    """A page outside the console whose address is cached with the resource.
+
+    Declared by service modules in ``LINKS`` and offered as a ``--<name>`` flag
+    of the service command, e.g. ``gcw composer environments etl --airflow``.
+
+    Attributes:
+        kind: Resource kind the link belongs to, e.g. ``"environments"``.
+        extra_key: Key in the cached resource's ``extra`` that holds the URL.
+        help: Help text of the flag.
+    """
+
+    kind: str
+    extra_key: str
+    help: str

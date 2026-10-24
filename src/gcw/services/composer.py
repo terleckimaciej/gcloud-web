@@ -4,6 +4,7 @@ Commands::
 
     gcw composer                           list of environments
     gcw composer environments [NAME]       list of environments, or one environment (tabs below)
+    gcw composer environments NAME --airflow   the environment's Airflow web UI
 
 The location defaults to ``composer/location``.
 
@@ -16,7 +17,7 @@ and API.
 
 from gcw.cache.store import Resource
 from gcw.context.resolve import Context
-from gcw.web.route import Route
+from gcw.web.route import Link, Route
 
 API = "https://composer.googleapis.com/v1"
 
@@ -31,6 +32,10 @@ KINDS = {
         tabs=("monitoring", "logs", "dags"),
         location_property=("composer", "location"),
     ),
+}
+
+LINKS = {
+    "airflow": Link(kind="environments", extra_key="airflow_uri", help="open the environment's Airflow web UI"),
 }
 
 

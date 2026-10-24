@@ -19,5 +19,6 @@
 | [0015](0015-no-gcloud-shell-wrapper.md) | No shell wrapper around gcloud | Accepted, supersedes 0009 |
 | [0016](0016-official-token-command-by-default.md) | Access tokens from the official gcloud command | Accepted, supersedes 0007 |
 | [0017](0017-plan-checklists-until-issues.md) | Milestone checklists stay in the plan for now | Accepted, partially supersedes 0014 |
+| [0018](0018-cache-commands.md) | Cache commands live under `gcw cache` | Accepted |
 
 New ADR: copy [template.md](template.md) and add a row to this table.

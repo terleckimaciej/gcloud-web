@@ -1,6 +1,6 @@
 """Paging long command output through the user's pager, the way git and gh do it.
 
-Only informational commands (``gcw services``, later ``gcw ls``) page their
+Only informational commands (``gcw services``, ``gcw cache list``) page their
 output. A printed URL never does: it is one line meant to be copied or piped.
 
 Paging happens only when stdout is an interactive terminal, so redirecting or
