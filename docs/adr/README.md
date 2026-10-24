@@ -20,5 +20,6 @@
 | [0016](0016-official-token-command-by-default.md) | Access tokens from the official gcloud command | Accepted, supersedes 0007 |
 | [0017](0017-plan-checklists-until-issues.md) | Milestone checklists stay in the plan for now | Accepted, partially supersedes 0014 |
 | [0018](0018-cache-commands.md) | Cache commands live under `gcw cache` | Accepted |
+| [0019](0019-service-names-follow-gcloud.md) | Service names follow gcloud's command groups | Accepted |
 
 New ADR: copy [template.md](template.md) and add a row to this table.

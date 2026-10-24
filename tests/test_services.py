@@ -26,8 +26,8 @@ def gcloud_project(gcloud_dir):
         (["functions", "fn", "-l", "eu1"], "functions/details/eu1/fn?project=my-prj"),
         (["compute", "instances", "vm", "-z", "eu1-b"],
          "compute/instancesDetail/zones/eu1-b/instances/vm?project=my-prj"),
-        (["gke", "clusters", "c1", "-l", "eu1"], "kubernetes/clusters/details/eu1/c1/details?project=my-prj"),
-        (["gke", "clusters", "c1", "-l", "eu1", "--tab", "nodes"],
+        (["container", "clusters", "c1", "-l", "eu1"], "kubernetes/clusters/details/eu1/c1/details?project=my-prj"),
+        (["container", "clusters", "c1", "-l", "eu1", "--tab", "nodes"],
          "kubernetes/clusters/details/eu1/c1/nodes?project=my-prj"),
         (["sql", "instances", "db"], "sql/instances/db/overview?project=my-prj"),
         (["sql", "instances", "db", "--tab", "backups"], "sql/instances/db/backups?project=my-prj"),
@@ -58,7 +58,7 @@ def test_resource_url(argv, path, capsys):
         (["secrets"], "security/secret-manager"),
         (["iam"], "iam-admin/iam"),
         (["iam", "service-accounts"], "iam-admin/serviceaccounts"),
-        (["gke", "clusters"], "kubernetes/list/overview"),
+        (["container", "clusters"], "kubernetes/list/overview"),
     ],
 )
 def test_overview_and_list_url(argv, path, capsys):

@@ -5,14 +5,16 @@ resulting URL (``-n``, ``--no-authuser``); they work before or after the
 command. Commands::
 
     gcw                                  open the project dashboard
-    gcw open PATH                        open any console path, e.g. ``run/jobs``
     gcw SERVICE [KIND [NAME]]            service overview, list of a kind, or one resource
         [-l LOCATION] [--tab TAB]
     gcw SERVICE [NAME]                   the same for a service with a single kind
     gcw SERVICE                          start page of a service that has no routes yet
+    gcw open PATH                        open any console page no service command covers
+
     gcw cache list [SERVICE [KIND]]      show the cached resources (alias: ls)
     gcw cache refresh [SERVICE [KIND]]   fetch resource names into the local cache
     gcw completion bash|zsh|fish         print the shell completion script
+    gcw env CONFIGURATION                switch the gcloud configuration of this shell
 
 The hidden ``gcw __complete -- WORDS...`` answers TAB for those scripts; it is
 dispatched before the parser is built (see ``gcw.cli.complete``).
@@ -33,6 +35,15 @@ from gcw.web.url import console_url
 
 DASHBOARD_PATH = "home/dashboard"
 
+# gcw's own commands with their one-line help, in the order of `gcw --help`.
+OWN_COMMANDS = {
+    "services": "list the supported services, kinds and tabs",
+    "cache": "show or refresh the local resource cache",
+    "open": "open a console page no service command covers",
+    "env": "switch the gcloud configuration of this shell",
+    "completion": "print the shell completion script",
+}
+
 # Shown at the end of `gcw --help`. The command list above it cannot carry every
 # service (there are dozens of start pages), so the examples teach the shape of a
 # command instead, one line per form: dashboard, resource, tab, list, start page,
@@ -46,12 +57,10 @@ examples:
   gcw secrets db-password            a secret (services with one kind omit it)
   gcw bigquery                       the BigQuery start page
   gcw pubsub -p other-project        Pub/Sub in another project
-  gcw open iam-admin/iam -n          print the URL of any console path
+  gcw open logs/query -n             print the URL of any console path
   gcw cache refresh                  cache resource names for TAB completion
   gcw cache ls run                   show the cached Cloud Run resources
-
-Many more services have a start page like `gcw bigquery`.
-Run `gcw services` for the full list.\
+  eval "$(gcw env work)"             use the "work" configuration in this shell\
 """
 
 
@@ -78,6 +87,22 @@ class _VersionAction(argparse.Action):
         # parser.exit(message=...) would write to stderr; versions belong on stdout.
         print(f"{parser.prog} {installed}")
         parser.exit()
+
+
+class _Parser(argparse.ArgumentParser):
+    """ArgumentParser whose error for an unknown command stays short.
+
+    argparse lists every choice, which for ``COMMAND`` means about 70 names;
+    other errors, such as an unknown kind, keep their short list of choices.
+    """
+
+    def error(self, message):
+        """Replace the unknown-command message, then exit with argparse's usual code 2."""
+        prefix = "argument COMMAND: invalid choice: "
+        if message.startswith(prefix):
+            command = message[len(prefix):].split(" (choose from", 1)[0]
+            message = f"unknown command {command}; see `gcw --help` or `gcw services`"
+        super().error(message)
 
 
 def _add_global_flags(parser: argparse.ArgumentParser, *, with_defaults: bool) -> None:
@@ -113,7 +138,8 @@ def _add_service_command(commands, module: ModuleType) -> None:
     A service with a single kind gets ``gcw <service> [NAME]`` instead; its
     ``kind`` is always ``None`` after parsing and is implied by ``_service_path``.
     """
-    command = commands.add_parser(module.NAME, help=module.HELP, description=module.HELP)
+    # No help=: argparse would list it among gcw's own commands; _services_help lists it instead.
+    command = commands.add_parser(module.NAME, description=module.HELP)
     _add_global_flags(command, with_defaults=False)
     if is_single_kind(module):
         command.set_defaults(kind=None)
@@ -140,8 +166,7 @@ def _add_cache_commands(commands) -> None:
     ``SERVICE [KIND]`` filter. The action is stored in ``cache_action``,
     because argparse records an alias as typed (``ls``), not as ``list``.
     """
-    cache = commands.add_parser("cache", help="show or refresh the local resource cache",
-                                description="show or refresh the local resource cache")
+    cache = commands.add_parser("cache", description=OWN_COMMANDS["cache"])
     actions = cache.add_subparsers(dest="cache_command", metavar="ACTION", required=True)
 
     list_command = actions.add_parser("list", aliases=["ls"], help="show the cached resources",
@@ -185,33 +210,64 @@ def build_parser() -> argparse.ArgumentParser:
     Returns:
         The configured parser for the ``gcw`` command.
     """
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="gcw",
-        description="Open Google Cloud console pages from the terminal.",
+        usage="%(prog)s [FLAGS] [COMMAND ...]",
+        description=_commands_help(),
         epilog=EXAMPLES,
-        # Keep the line breaks and alignment of EXAMPLES; argparse rewraps text by default.
+        # Keep the line breaks and alignment of the command list and examples;
+        # argparse rewraps text by default.
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--version", action=_VersionAction, help="show the installed version and exit")
     _add_global_flags(parser, with_defaults=True)
 
-    commands = parser.add_subparsers(dest="command", metavar="COMMAND")
-    open_command = commands.add_parser("open", help="open any console path, e.g. run/jobs")
+    # help=SUPPRESS: argparse's own list would mix gcw's commands and the GCP
+    # services in one flat section; _commands_help() lists them in two groups.
+    commands = parser.add_subparsers(dest="command", metavar="COMMAND", help=argparse.SUPPRESS)
+    open_command = commands.add_parser("open", description="open any path after console.cloud.google.com/, with "
+                                       "the project and account added; for a supported service use its "
+                                       "command instead (`gcw run jobs`, not `gcw open run/jobs`)")
     _add_global_flags(open_command, with_defaults=False)
     open_command.add_argument("path", help="path after console.cloud.google.com/")
     # Need no context, so they take no global flags.
-    commands.add_parser("services", help="list the supported services, kinds and tabs")
-    completion = commands.add_parser("completion", help="print the shell completion script",
-                                     description="print the shell completion script; "
+    commands.add_parser("services", description=OWN_COMMANDS["services"])
+    _add_cache_commands(commands)
+    completion = commands.add_parser("completion", description="print the shell completion script; "
                                      'enable it with eval "$(gcw completion bash)" (or zsh), '
                                      "or `gcw completion fish | source`")
     completion.add_argument("shell", choices=["bash", "zsh", "fish"])
-    _add_cache_commands(commands)
+    env = commands.add_parser("env", description="print the command that switches the gcloud configuration of "
+                              'the current shell only; use it as eval "$(gcw env CONFIGURATION)", '
+                              "or `gcw env CONFIGURATION --shell fish | source`")
+    env.add_argument("configuration", metavar="CONFIGURATION", help="name of a gcloud configuration")
+    env.add_argument("--shell", choices=["bash", "zsh", "fish"], default="bash",
+                     help="syntax of the printed command (default: bash, also right for zsh)")
     for module in SERVICES.values():
         _add_service_command(commands, module)
     for name, landing in LANDINGS.items():
         _add_landing_command(commands, name, landing)
     return parser
+
+
+def _commands_help() -> str:
+    """Return the description of ``gcw --help``: one command list in two groups.
+
+    gcw's own commands and the GCP services are both commands, so they share one
+    ``commands:`` heading; the groups only tell them apart. The dozens of start
+    pages are left to ``gcw services``.
+    """
+    column = max(len(name) for name in [*OWN_COMMANDS, *SERVICES]) + 4
+    lines = ["Open Google Cloud console pages from the terminal.", "", "COMMAND:", "  gcw's own:"]
+    lines += [f"    {name:<{column}}{help_text}" for name, help_text in OWN_COMMANDS.items()]
+    lines += ["", "  GCP services (gcw SERVICE [KIND [NAME]]):"]
+    lines += [f"    {name:<{column}}{module.HELP}" for name, module in SERVICES.items()]
+    lines += [
+        "",
+        f"  Many more services have a start page only, like `gcw bigquery` ({len(LANDINGS)} in all);",
+        "  run `gcw services` for all of them, with their kinds and tabs.",
+    ]
+    return "\n".join(lines)
 
 
 def _services_listing() -> str:
@@ -328,6 +384,35 @@ def _cache_command(args: argparse.Namespace, context: Context) -> int:
     return refresh_command(context, args.filter_service, args.filter_kind, background=args.background)
 
 
+def _env_command(configuration: str, shell: str) -> int:
+    """Print the command that makes ``configuration`` active in the calling shell only.
+
+    gcloud honours ``$CLOUDSDK_ACTIVE_CONFIG_NAME`` over its global
+    ``active_config`` file, so other terminals keep their configuration
+    (ADR-0005). A program cannot change its parent shell's environment,
+    hence the ``eval`` around the command.
+
+    Returns:
+        The exit code: 2 if the configuration does not exist.
+    """
+    import shlex
+
+    from gcw.context.gcloud_config import list_configurations
+
+    available = list_configurations()
+    if configuration not in available:
+        print(f"gcw: {UnknownConfigurationError(configuration, available)}", file=sys.stderr)
+        return 2
+    if shell == "fish":
+        print(f"set -gx CLOUDSDK_ACTIVE_CONFIG_NAME {shlex.quote(configuration)}")
+    else:
+        print(f"export CLOUDSDK_ACTIVE_CONFIG_NAME={shlex.quote(configuration)}")
+    if sys.stdout.isatty():
+        usage = f"gcw env {configuration} --shell fish | source" if shell == "fish" else f'eval "$(gcw env {configuration})"'
+        print(f"gcw: this only prints the command; to apply it, run: {usage}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI.
 
@@ -351,6 +436,8 @@ def main(argv: list[str] | None = None) -> int:
 
         print(files("gcw.cli").joinpath("shell", f"gcw.{args.shell}").read_text(encoding="utf-8"), end="")
         return 0
+    if args.command == "env":
+        return _env_command(args.configuration, args.shell)
     if args.command == "services":
         # Pure information about the build; no gcloud context is needed or read.
         print(_services_listing())

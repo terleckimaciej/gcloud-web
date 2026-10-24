@@ -104,12 +104,12 @@ def test_compute_instances_from_aggregated_list(api):
     assert listing("compute", "instances") == [Resource("vm1", "eu1-b")]
 
 
-def test_gke_clusters_keep_zone_or_region(api):
+def test_container_clusters_keep_zone_or_region(api):
     """Each cluster's own ``location`` is cached, zonal or regional."""
     api["https://container.googleapis.com/v1/projects/my-prj/locations/-/clusters"] = {
         "clusters": [{"name": "prod", "location": "europe-west1"}, {"name": "dev", "location": "europe-west1-b"}]
     }
-    assert listing("gke", "clusters") == [Resource("prod", "europe-west1"), Resource("dev", "europe-west1-b")]
+    assert listing("container", "clusters") == [Resource("prod", "europe-west1"), Resource("dev", "europe-west1-b")]
 
 
 def test_sql_instances(api):
