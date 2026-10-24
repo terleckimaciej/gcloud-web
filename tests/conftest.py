@@ -22,3 +22,17 @@ def gcloud_dir(tmp_path, monkeypatch):
     directory = tmp_path / "gcloud"
     monkeypatch.setenv("CLOUDSDK_CONFIG", str(directory))
     return directory
+
+
+@pytest.fixture(autouse=True)
+def cache_dir(tmp_path, monkeypatch):
+    """Isolate every test from the real gcw cache.
+
+    Points ``$GCW_CACHE_DIR`` at a temporary directory (not created yet).
+
+    Returns:
+        The temporary cache directory.
+    """
+    directory = tmp_path / "gcw-cache"
+    monkeypatch.setenv("GCW_CACHE_DIR", str(directory))
+    return directory

@@ -34,31 +34,18 @@ KINDS = {
 
 
 def list_repositories(context: Context, token: str) -> list[Resource]:
-    """List repositories in every location of the project.
-
-    A location that fails is skipped; if every location fails, the first
-    error is raised so the caller can report it.
+    """List repositories in every location of the project, with their format.
 
     Raises:
         ApiError: The locations could not be listed, or no location answered.
     """
-    from gcw.api.client import list_all, run_parallel
+    from gcw.api.client import list_per_location
 
     project_path = f"{API}/projects/{context.project}"
-    locations = [item["locationId"] for item in list_all(f"{project_path}/locations", token, "locations")]
-    results = run_parallel({
-        location: (lambda location=location: list_all(
-            f"{project_path}/locations/{location}/repositories", token, "repositories"
-        ))
-        for location in locations
-    })
-
-    errors = [result for result in results.values() if isinstance(result, Exception)]
-    if errors and len(errors) == len(results):
-        raise errors[0]
+    found = list_per_location(
+        f"{project_path}/locations", f"{project_path}/locations/{{location}}/repositories", token, "repositories"
+    )
     return [
         Resource(item["name"].rsplit("/", 1)[-1], location, {"format": item.get("format", "").lower()})
-        for location, items in results.items()
-        if not isinstance(items, Exception)
-        for item in items
+        for location, item in found
     ]
