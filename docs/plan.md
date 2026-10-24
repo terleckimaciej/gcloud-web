@@ -135,7 +135,9 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [ ] manual verification in the console (the Status column)
 
 ### M3: cache, auth, fetching
-- [ ] `api/auth.py` (`gcloud auth print-access-token` by default, `access_tokens.db` opt-in, ADR-0016), `api/client.py`
+- [x] `api/auth.py`: token from `gcloud auth print-access-token --account` (ADR-0016), found with `shutil.which` (`gcloud.cmd` on Windows), remembered per process
+- [x] `api/client.py`: GET JSON over `urllib`, `nextPageToken` pagination, `run_parallel` with a per-task error
+- [ ] `GCW_FAST_TOKEN=1`: the `access_tokens.db` opt-in from ADR-0016 (deferred past the prototype)
 - [ ] `list_*` functions in the service modules for every MVP type (Run, Functions, GCE, GKE, SQL, GCS, Secrets, AR, Dataproc, Composer)
 - [ ] `cache/store.py` + `cache/refresh.py`: atomic writes, 24 h soft TTL, background refresh, `gcw refresh`, `gcw ls`
 - [ ] live lookup when missing from the cache, then added to it
