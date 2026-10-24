@@ -12,6 +12,10 @@ command. Commands::
     gcw SERVICE                          start page of a service that has no routes yet
     gcw cache list [SERVICE [KIND]]      show the cached resources (alias: ls)
     gcw cache refresh [SERVICE [KIND]]   fetch resource names into the local cache
+    gcw completion bash|zsh|fish         print the shell completion script
+
+The hidden ``gcw __complete -- WORDS...`` answers TAB for those scripts; it is
+dispatched before the parser is built (see ``gcw.cli.complete``).
 
 Service commands are generated from the two registries in ``gcw.services``:
 modules with routes (``SERVICES``) and start pages (``LANDINGS``).
@@ -195,8 +199,13 @@ def build_parser() -> argparse.ArgumentParser:
     open_command = commands.add_parser("open", help="open any console path, e.g. run/jobs")
     _add_global_flags(open_command, with_defaults=False)
     open_command.add_argument("path", help="path after console.cloud.google.com/")
-    # Needs no context, so it takes no global flags.
+    # Need no context, so they take no global flags.
     commands.add_parser("services", help="list the supported services, kinds and tabs")
+    completion = commands.add_parser("completion", help="print the shell completion script",
+                                     description="print the shell completion script; "
+                                     'enable it with eval "$(gcw completion bash)" (or zsh), '
+                                     "or `gcw completion fish | source`")
+    completion.add_argument("shell", choices=["bash", "zsh", "fish"])
     _add_cache_commands(commands)
     for module in SERVICES.values():
         _add_service_command(commands, module)
@@ -328,8 +337,20 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         The process exit code.
     """
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv[:1] == ["__complete"]:
+        from gcw.cli.complete import run
+
+        return run(argv[1:])
+
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "completion":
+        from importlib.resources import files
+
+        print(files("gcw.cli").joinpath("shell", f"gcw.{args.shell}").read_text(encoding="utf-8"), end="")
+        return 0
     if args.command == "services":
         # Pure information about the build; no gcloud context is needed or read.
         print(_services_listing())

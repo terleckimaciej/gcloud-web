@@ -17,7 +17,6 @@ so it imports nothing heavy.
 
 import json
 import os
-import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -111,6 +110,9 @@ def write(account: str | None, project: str, service: str, kind: str, resources:
     replaces the entry in one step, so concurrent readers see either the old
     or the new list.
     """
+    # Imported here: tempfile is slow to import and completion only reads.
+    import tempfile
+
     path = entry_path(account, project, service, kind)
     path.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps({"fetched_at": time.time(), "resources": [r.to_json() for r in resources]})
