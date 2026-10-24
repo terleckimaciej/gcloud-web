@@ -15,6 +15,11 @@ Every service module defines:
     LANDING   console path opened by ``gcw <NAME>`` alone
     KINDS     resource kinds, ``{"services": Route(...), ...}``
 
+and may define:
+
+    SINGLE_KIND   ``True`` when the service has exactly one kind that the user
+                  never types (``gcw secrets NAME``, ADR-0012); default ``False``
+
 To add a service, create its module and append it to the tuple below.
 
 Services that only have a start page live in ``landing`` instead, as entries of
@@ -24,9 +29,30 @@ module or a landing page, never both (checked by the tests).
 
 from types import ModuleType
 
-from gcw.services import run
+from gcw.services import (
+    artifacts,
+    composer,
+    compute,
+    dataproc,
+    functions,
+    gke,
+    iam,
+    run,
+    secrets,
+    sql,
+    storage,
+)
 from gcw.services.landing import LANDINGS, Landing
 
-SERVICES: dict[str, ModuleType] = {module.NAME: module for module in (run,)}
+SERVICES: dict[str, ModuleType] = {
+    module.NAME: module
+    for module in (run, functions, compute, gke, sql, storage, secrets, artifacts, dataproc, composer, iam)
+}
 
-__all__ = ["LANDINGS", "SERVICES", "Landing"]
+
+def is_single_kind(module: ModuleType) -> bool:
+    """Return whether the service's only resource kind is implied, as in ``gcw secrets NAME``."""
+    return getattr(module, "SINGLE_KIND", False)
+
+
+__all__ = ["LANDINGS", "SERVICES", "Landing", "is_single_kind"]

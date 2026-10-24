@@ -8,6 +8,7 @@ command. Commands::
     gcw open PATH                        open any console path, e.g. ``run/jobs``
     gcw SERVICE [KIND [NAME]]            service overview, list of a kind, or one resource
         [-l LOCATION] [--tab TAB]
+    gcw SERVICE [NAME]                   the same for a service with a single kind
     gcw SERVICE                          start page of a service that has no routes yet
 
 Service commands are generated from the two registries in ``gcw.services``:
@@ -20,7 +21,7 @@ from types import ModuleType
 
 from gcw.context.gcloud_config import UnknownConfigurationError
 from gcw.context.resolve import Context, resolve_context
-from gcw.services import LANDINGS, SERVICES, Landing
+from gcw.services import LANDINGS, SERVICES, Landing, is_single_kind
 from gcw.web.route import RouteError
 from gcw.web.url import console_url
 
@@ -36,6 +37,7 @@ examples:
   gcw run services api               the Cloud Run service "api"
   gcw run services api --tab logs    its logs tab
   gcw run jobs                       the list of Cloud Run jobs
+  gcw secrets db-password            a secret (services with one kind omit it)
   gcw bigquery                       the BigQuery start page
   gcw pubsub -p other-project        Pub/Sub in another project
   gcw open iam-admin/iam -n          print the URL of any console path
@@ -98,11 +100,18 @@ def _add_global_flags(parser: argparse.ArgumentParser, *, with_defaults: bool) -
 
 
 def _add_service_command(commands, module: ModuleType) -> None:
-    """Add ``gcw <service> [KIND [NAME]]`` for one service module from the registry."""
+    """Add ``gcw <service> [KIND [NAME]]`` for one service module from the registry.
+
+    A service with a single kind gets ``gcw <service> [NAME]`` instead; its
+    ``kind`` is always ``None`` after parsing and is implied by ``_service_path``.
+    """
     command = commands.add_parser(module.NAME, help=module.HELP, description=module.HELP)
     _add_global_flags(command, with_defaults=False)
-    command.add_argument("kind", nargs="?", choices=list(module.KINDS), metavar="KIND",
-                         help=f"resource kind: {', '.join(module.KINDS)}")
+    if is_single_kind(module):
+        command.set_defaults(kind=None)
+    else:
+        command.add_argument("kind", nargs="?", choices=list(module.KINDS), metavar="KIND",
+                             help=f"resource kind: {', '.join(module.KINDS)}")
     command.add_argument("name", nargs="?", help="resource name; omit to open the list")
     # All six spellings are the same flag: a route needs either a region or a zone,
     # never both, so the user can type whichever word fits the service.
@@ -173,7 +182,9 @@ def _services_listing() -> str:
         lines.append(f"  {name.ljust(column)}{module.HELP}")
         for kind, route in module.KINDS.items():
             tabs = "tabs: " + ", ".join(route.tabs) if route.tabs else ""
-            lines.append(f"    {kind.ljust(column - 2)}{tabs}".rstrip())
+            # The kind of a single-kind service is never typed, so show where the name goes.
+            label = "NAME" if is_single_kind(module) else kind
+            lines.append(f"    {label.ljust(column - 2)}{tabs}".rstrip())
 
     lines.append("\nstart pages only:")
     lines += [f"  {name.ljust(column)}{landing.help}" for name, landing in sorted(LANDINGS.items())]
@@ -184,16 +195,19 @@ def _service_path(args: argparse.Namespace, context: Context) -> str:
     """Return the console path for a service command.
 
     ``gcw run`` gives the service overview, ``gcw run services`` the list of
-    services, and ``gcw run services api`` one resource. A missing location is
-    taken from the gcloud property declared by the route (e.g. ``run/region``).
+    services, and ``gcw run services api`` one resource. For a single-kind
+    service, ``gcw secrets db-password`` is the resource of its only kind. A
+    missing location is taken from the gcloud property declared by the route
+    (e.g. ``run/region``).
 
     Raises:
         RouteError: The resource page cannot be built (e.g. no location, unknown tab).
     """
     module = args.service
-    if args.kind is None:
+    kind = next(iter(module.KINDS)) if is_single_kind(module) and args.name else args.kind
+    if kind is None:
         return module.LANDING
-    route = module.KINDS[args.kind]
+    route = module.KINDS[kind]
     if args.name is None:
         return route.list_path or module.LANDING
 
