@@ -147,10 +147,11 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] Windows in code: `shutil.which("gcloud")` (`gcloud.cmd`), `DETACHED_PROCESS` for the refresh process, cache directory `%LOCALAPPDATA%\gcw` (ADR-0013); not yet tried on a real Windows machine
 
 ### M4: completion and switching
-- [ ] `__complete` + bash/zsh/fish scripts with descriptions
-- [ ] completion for `-c` (configurations) and `-p` (projects from the cache)
+- [x] `__complete` (`cli/complete.py`, dispatched before argparse) + bash/zsh/fish scripts in `cli/shell/`, printed by `gcw completion SHELL`; descriptions `location · project` in zsh and fish. bash confirmed by hand (Pop!_OS terminal and VS Code; each shell needs the `eval` line, e.g. in `~/.bashrc`); zsh and fish only by tests so far
+- [x] completion for `-c` (configurations, described by project), `-p` (cached and configured projects), `--tab` and `-l` (locations from the cache)
 - [ ] `gcw env` (`shell-init` rejected in ADR-0015)
-- [ ] measuring the performance budgets + a test: after `__complete`, no `ssl` and no `urllib.request` in `sys.modules`
+- [x] a test: after `__complete`, no `ssl` and no `urllib.request` in `sys.modules`
+- [ ] completion budget: measured ~70 ms (median of 20, Python 3.12) against the 50 ms target. Python itself starts in ~15 ms; `dataclasses` (via `inspect`) costs ~25 ms, then `json`/`re`, `typing`, `pathlib`. Kept for the prototype; after the demo replace dataclasses on the completion path (`Route`, `Link`, `Landing`, `Resource`, `CacheEntry`, `GcloudConfig`, `Context`) and add a lean entry point that does not import `cli/main.py`
 
 ### M5: release
 - [ ] README (installation with `uv tool install` / `pipx`, completion, adding routes, WSL: `BROWSER=wslview`)
