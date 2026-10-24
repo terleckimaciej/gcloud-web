@@ -40,9 +40,9 @@ from gcw.services import (
     artifacts,
     composer,
     compute,
+    container,
     dataproc,
     functions,
-    gke,
     iam,
     run,
     secrets,
@@ -53,7 +53,7 @@ from gcw.services.landing import LANDINGS, Landing
 
 SERVICES: dict[str, ModuleType] = {
     module.NAME: module
-    for module in (run, functions, compute, gke, sql, storage, secrets, artifacts, dataproc, composer, iam)
+    for module in (run, functions, compute, container, sql, storage, secrets, artifacts, dataproc, composer, iam)
 }
 
 

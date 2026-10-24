@@ -10,6 +10,7 @@ _gcw() {
     for line in $lines; do
         [[ -z $line ]] && continue
         value=${line%%$'\t'*}
+        [[ -z $value ]] && continue  # a group break, used by bash only
         description=${line#*$'\t'}
         value=${value//:/\\:}
         if [[ -n $description ]]; then

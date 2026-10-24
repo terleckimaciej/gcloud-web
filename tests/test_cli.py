@@ -177,6 +177,17 @@ def test_unknown_kind_is_rejected_by_parser(capsys):
     assert "invalid choice: 'servces'" in capsys.readouterr().err
 
 
+def test_unknown_command_error_is_short(capsys):
+    """An unknown command points to the help instead of listing about 70 commands."""
+    with pytest.raises(SystemExit) as exc:
+        main(["nope"])
+
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "unknown command 'nope'; see `gcw --help` or `gcw services`" in err
+    assert "choose from" not in err
+
+
 def test_tab_without_name_is_rejected(capsys):
     """``--tab`` and ``--location`` need a resource name."""
     with pytest.raises(SystemExit):

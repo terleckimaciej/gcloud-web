@@ -2,8 +2,8 @@
 
 Commands::
 
-    gcw gke                        GKE overview
-    gcw gke clusters [NAME]        list of clusters, or one cluster (tabs below)
+    gcw container                     GKE overview
+    gcw container clusters [NAME]     list of clusters, or one cluster (tabs below)
 
 A cluster is either regional or zonal, so ``{location}`` may be either. The
 default comes from ``compute/region``, since regional clusters are the usual
@@ -19,7 +19,7 @@ from gcw.web.route import Route
 
 API = "https://container.googleapis.com/v1"
 
-NAME = "gke"
+NAME = "container"
 HELP = "Google Kubernetes Engine clusters"
 LANDING = "kubernetes/list/overview"
 

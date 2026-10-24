@@ -2,8 +2,14 @@
 
 The shell passes every word of the command line, starting with ``gcw`` and
 ending with the word under the cursor (empty after a space). The answer is one
-candidate per line, ``value<TAB>description``; fish shows the description as
-is, zsh through ``_describe``, bash drops it.
+candidate per line, ``value<TAB>description``. gcw's own commands, flags and
+the values of ``-c``, ``-p`` and ``--tab`` carry a description; GCP services,
+kinds and resource names are plain, since anyone using GCP knows them.
+
+After ``gcw`` come gcw's own commands first, then an empty line
+(``GROUP_BREAK``), then the GCP services. The bash script turns the break into
+a gap so the commands get a column of their own; zsh and fish skip it. The
+break has an empty value, so any typed prefix filters it out.
 
 Candidates come only from the gcloud configuration files and the resource
 cache: this path never touches the network, never starts a process and never
@@ -19,7 +25,7 @@ from gcw.services import LANDINGS, SERVICES, is_single_kind
 
 # Flags that take a value; the value is the next word.
 VALUE_FLAGS = {"-p", "--project", "-c", "--configuration", "-l", "--location", "-r", "--region",
-               "-z", "--zone", "--tab"}
+               "-z", "--zone", "--tab", "--shell"}
 LOCATION_FLAGS = {"-l", "--location", "-r", "--region", "-z", "--zone"}
 
 GLOBAL_FLAGS = [
@@ -34,13 +40,15 @@ RESOURCE_FLAGS = [
 ]
 
 COMMANDS = {
-    "open": "open any console path",
     "services": "list the supported services, kinds and tabs",
     "cache": "show or refresh the local resource cache",
+    "open": "open a console page no service command covers",
+    "env": "switch the gcloud configuration of this shell",
     "completion": "print the shell completion script",
 }
 CACHE_ACTIONS = {"list": "show the cached resources", "refresh": "fetch resource names into the cache"}
 SHELLS = {"bash": "", "zsh": "", "fish": ""}
+GROUP_BREAK = ("", "")
 
 Candidate = tuple[str, str]
 
@@ -110,21 +118,19 @@ def _context(options: dict[str, str]) -> tuple[str | None, str | None, str | Non
 def _positional(positional: list[str], options: dict[str, str]) -> list[Candidate]:
     """Candidates for the next positional word: command, kind, name, cache action or shell."""
     if not positional:
-        return (
-            [(name, module.HELP) for name, module in sorted(SERVICES.items())]
-            + list(COMMANDS.items())
-            + [(name, landing.help) for name, landing in sorted(LANDINGS.items())]
-        )
+        return [*COMMANDS.items(), GROUP_BREAK, *_plain(sorted([*SERVICES, *LANDINGS]))]
     command, rest = positional[0], positional[1:]
     if command == "completion":
-        return list(SHELLS.items()) if not rest else []
+        return _plain(SHELLS) if not rest else []
+    if command == "env":
+        return _configurations() if not rest else []
     if command == "cache":
         if not rest:
             return list(CACHE_ACTIONS.items())
         if len(rest) == 1:
-            return [(name, module.HELP) for name, module in sorted(SERVICES.items())]
+            return _plain(sorted(SERVICES))
         if len(rest) == 2 and rest[1] in SERVICES:
-            return [(kind, "") for kind in SERVICES[rest[1]].KINDS]
+            return _plain(SERVICES[rest[1]].KINDS)
         return []
     module = SERVICES.get(command)
     if module is None:
@@ -132,32 +138,32 @@ def _positional(positional: list[str], options: dict[str, str]) -> list[Candidat
     if is_single_kind(module):
         return _names(module, next(iter(module.KINDS)), options) if not rest else []
     if not rest:
-        return [(kind, _cached_count(module, kind, options)) for kind in module.KINDS]
+        return _plain(module.KINDS)
     if len(rest) == 1 and rest[0] in module.KINDS:
         return _names(module, rest[0], options)
     return []
 
 
+def _plain(values) -> list[Candidate]:
+    """Candidates without a description."""
+    return [(value, "") for value in values]
+
+
 def _names(module, kind: str, options: dict[str, str]) -> list[Candidate]:
-    """Cached resource names of one kind, described as ``location · project``."""
+    """Cached resource names of one kind, once each even when several locations share a name."""
     account, project, _ = _context(options)
     entry = store.read(account, project, module.NAME, kind) if project else None
     if entry is None:
         return []
-    return [(r.name, " · ".join(part for part in (r.location, project) if part)) for r in entry.resources]
-
-
-def _cached_count(module, kind: str, options: dict[str, str]) -> str:
-    """Describe a kind by how many of its resources are cached, if any."""
-    account, project, _ = _context(options)
-    entry = store.read(account, project, module.NAME, kind) if project else None
-    return f"{len(entry.resources)} cached" if entry else ""
+    return _plain(dict.fromkeys(r.name for r in entry.resources))
 
 
 def _for_flag_value(flag: str, positional: list[str], options: dict[str, str]) -> list[Candidate]:
     """Candidates for the value of ``flag``: configurations, projects, locations or tabs."""
     if flag in ("-c", "--configuration"):
-        return [(name, load_gcloud_config(name).project or "") for name in list_configurations()]
+        return _configurations()
+    if flag == "--shell":
+        return _plain(SHELLS)
     if flag in ("-p", "--project"):
         account, _, configured = _context(options)
         projects = set(store.cached_projects(account)) | ({configured} if configured else set())
@@ -173,6 +179,11 @@ def _for_flag_value(flag: str, positional: list[str], options: dict[str, str]) -
         locations = sorted({r.location for r in entry.resources if r.location}) if entry else []
         return [(location, "") for location in locations]
     return []
+
+
+def _configurations() -> list[Candidate]:
+    """gcloud configurations, described by their project."""
+    return [(name, load_gcloud_config(name).project or "") for name in list_configurations()]
 
 
 def _flags(positional: list[str]) -> list[Candidate]:

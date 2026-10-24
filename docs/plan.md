@@ -13,7 +13,7 @@ api-worker    europe-west1 · prod-proj
 $ gcw run services api-gateway --tab logs   # the service's logs, no region needed
 $ gcw sql instances main-db -n              # only print the URL
 $ gcw storage buckets my-bucket/exports/2026
-$ gcw -c work gke clusters <TAB>            # clusters from the "work" configuration
+$ gcw -c work container clusters <TAB>      # clusters from the "work" configuration
 $ gcw logs run api-worker                   # Logs Explorer with a ready filter
 $ gcw composer environments etl --airflow   # the environment's Airflow UI
 $ gcw run                                   # service overview
@@ -49,7 +49,7 @@ Status: ☐ not implemented · 🔧 implemented, template unverified · ✅ veri
 | `gcw run jobs [job] [--tab executions\|logs\|triggers\|yaml]` | L2 | list `run/jobs`, resource `run/jobs/details/{location}/{name}/{tab}` | 🔧 |
 | `gcw functions [fn]` | L1 | `functions/details/{location}/{name}` | 🔧 |
 | `gcw compute instances [vm]` | L1 | `compute/instancesDetail/zones/{location}/instances/{name}` | 🔧 |
-| `gcw gke clusters [cluster] [--tab details\|nodes\|storage\|observability\|logs]` | L2 | `kubernetes/clusters/details/{location}/{name}/{tab}` | 🔧 |
+| `gcw container clusters [cluster] [--tab details\|nodes\|storage\|observability\|logs]` | L2 | `kubernetes/clusters/details/{location}/{name}/{tab}` | 🔧 |
 | `gcw sql instances [inst] [--tab overview\|connections\|users\|databases\|backups\|replicas\|operations]` | L2 | `sql/instances/{name}/{tab}` | 🔧 |
 | `gcw storage buckets [bucket[/path]]` | L1 | `storage/browser/{name}` | 🔧 |
 | `gcw secrets [name] [--tab versions\|overview\|permissions\|logs]` | L2 | `security/secret-manager/secret/{name}/{tab}` | 🔧 |
@@ -59,7 +59,7 @@ Status: ☐ not implemented · 🔧 implemented, template unverified · ✅ veri
 | `gcw dataproc jobs [id]` | L1 | `dataproc/jobs/{name}?region={location}` | 🔧 |
 | `gcw composer environments [env] [--tab monitoring\|logs\|dags]` | L2 | `composer/environments/detail/{location}/{name}/{tab}` | 🔧 |
 | `gcw composer environments env --airflow` | L1 | `config.airflowUri` from the cache (`LINKS` in the module) | 🔧 |
-| `gcw logs [run\|gke\|sql\|functions <name>] [--query Q]` | L1 | `logs/query;query={filter}` (a separate case, to be designed) | ☐ |
+| `gcw logs [run\|container\|sql\|functions <name>] [--query Q]` | L1 | `logs/query;query={filter}` (a separate case, to be designed) | ☐ |
 | `gcw iam [service-accounts EMAIL]` | L0/L1 | `iam-admin/iam`, `iam-admin/serviceaccounts/details/{name}` | 🔧 |
 | `gcw <service>` (55 start pages) | L0 | a static list in `services/landing.py` | 🔧 |
 
@@ -95,7 +95,7 @@ src/gcw/
     browser.py          # webbrowser.open (the CLI decides about -n)
   services/             # one file = one GCP service (routes as data + list_*), flat
     __init__.py         # service registry
-    run.py functions.py compute.py gke.py sql.py storage.py secrets.py
+    run.py functions.py compute.py container.py sql.py storage.py secrets.py
     artifacts.py dataproc.py composer.py logs.py iam.py
     landing.py          # about 50 L0 start pages
 tests/
@@ -130,7 +130,7 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] `gcw services`: the list of supported services, kinds and tabs, in two sections (with routes / start pages only)
 - [x] `cli/pager.py`: long output through `$PAGER` (`GCW_PAGER` → `PAGER` → `less`), only when stdout is a terminal; `gcw cache list` uses it too
 - [x] single-kind services in the registry and parser (`gcw secrets NAME`, ADR-0012): the module's `SINGLE_KIND` attribute
-- [x] the remaining service modules with routes (no `list_*` yet): functions, compute, gke, sql, storage, secrets, artifacts, dataproc, composer, iam
+- [x] the remaining service modules with routes (no `list_*` yet): functions, compute, container, sql, storage, secrets, artifacts, dataproc, composer, iam
 - [x] URL tests for every route (`tests/test_services.py`)
 - [ ] manual verification in the console (the Status column)
 
@@ -147,9 +147,9 @@ Performance budgets: `gcw __complete` < 50 ms, `gcw <service> <resource>` with a
 - [x] Windows in code: `shutil.which("gcloud")` (`gcloud.cmd`), `DETACHED_PROCESS` for the refresh process, cache directory `%LOCALAPPDATA%\gcw` (ADR-0013); not yet tried on a real Windows machine
 
 ### M4: completion and switching
-- [x] `__complete` (`cli/complete.py`, dispatched before argparse) + bash/zsh/fish scripts in `cli/shell/`, printed by `gcw completion SHELL`; descriptions `location · project` in zsh and fish. bash confirmed by hand (Pop!_OS terminal and VS Code; each shell needs the `eval` line, e.g. in `~/.bashrc`); zsh and fish only by tests so far
+- [x] `__complete` (`cli/complete.py`, dispatched before argparse) + bash/zsh/fish scripts in `cli/shell/`, printed by `gcw completion SHELL`; descriptions only for gcw's own commands, flags and the values of `-c`, `-p` and `--tab`; GCP services, kinds and resource names are plain (a name in several locations is offered once, `-l` picks one). bash shows descriptions as `name  (description)` only when every candidate has one (as gh does; a single candidate is inserted bare; a test runs the script in real bash). After `gcw` come gcw's own commands first; in bash 4.4+ (`complete -o nosort`) blank entries give them a column of their own. The bash part takes a few ms per TAB; `gcw --help` lists gcw commands and GCP services in separate sections. bash confirmed by hand (Pop!_OS terminal and VS Code; each shell needs the `eval` line, e.g. in `~/.bashrc`); zsh and fish only by tests so far
 - [x] completion for `-c` (configurations, described by project), `-p` (cached and configured projects), `--tab` and `-l` (locations from the cache)
-- [ ] `gcw env` (`shell-init` rejected in ADR-0015)
+- [x] `gcw env CONFIGURATION [--shell bash|zsh|fish]`: prints the `CLOUDSDK_ACTIVE_CONFIG_NAME` export for `eval`; configurations complete with TAB (`shell-init` rejected in ADR-0015)
 - [x] a test: after `__complete`, no `ssl` and no `urllib.request` in `sys.modules`
 - [ ] completion budget: measured ~70 ms (median of 20, Python 3.12) against the 50 ms target. Python itself starts in ~15 ms; `dataclasses` (via `inspect`) costs ~25 ms, then `json`/`re`, `typing`, `pathlib`. Kept for the prototype; after the demo replace dataclasses on the completion path (`Route`, `Link`, `Landing`, `Resource`, `CacheEntry`, `GcloudConfig`, `Context`) and add a lean entry point that does not import `cli/main.py`
 
