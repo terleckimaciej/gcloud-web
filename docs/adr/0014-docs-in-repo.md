@@ -1,6 +1,6 @@
 # 0014. Documentation in the repository, work tracked in GitHub
 
-- Status: Accepted, partially superseded by [0017](0017-plan-checklists-until-issues.md) (open work stays in `plan.md` for now)
+- Status: Accepted; its part on open work was deferred by [0017](0017-plan-checklists-until-issues.md) and is in force again through [0021](0021-open-work-in-github-issues.md)
 - Date: 2026-10-18
 
 ## Context

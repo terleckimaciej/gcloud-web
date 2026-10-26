@@ -15,12 +15,15 @@
 | [0011](0011-project-structure.md) | Project structure: layers + flat `services/` | Accepted, partially superseded by 0012 |
 | [0012](0012-cli-syntax-and-routes.md) | CLI syntax, flags and the shape of routes | Accepted |
 | [0013](0013-supported-platforms.md) | Supported platforms and CI | Accepted |
-| [0014](0014-docs-in-repo.md) | Documentation in the repository | Accepted, partially superseded by 0017 |
+| [0014](0014-docs-in-repo.md) | Documentation in the repository | Accepted; open work in issues again through 0021 |
 | [0015](0015-no-gcloud-shell-wrapper.md) | No shell wrapper around gcloud | Accepted, supersedes 0009 |
-| [0016](0016-official-token-command-by-default.md) | Access tokens from the official gcloud command | Accepted, supersedes 0007 |
-| [0017](0017-plan-checklists-until-issues.md) | Milestone checklists stay in the plan for now | Accepted, partially supersedes 0014 |
+| [0016](0016-official-token-command-by-default.md) | Access tokens from the official gcloud command | Accepted, supersedes 0007; partially superseded by 0023 |
+| [0017](0017-plan-checklists-until-issues.md) | Milestone checklists stay in the plan for now | Superseded by 0021 |
 | [0018](0018-cache-commands.md) | Cache commands live under `gcw cache` | Accepted |
 | [0019](0019-service-names-follow-gcloud.md) | Service names follow gcloud's command groups | Accepted |
 | [0020](0020-gcloud-syntax-input.md) | gcloud command syntax as gcw input | Proposed |
+| [0021](0021-open-work-in-github-issues.md) | Open work lives in GitHub issues; docs carry no status | Accepted, supersedes 0017 |
+| [0022](0022-tab-budget-100ms.md) | TAB completion budget: 100 ms | Accepted |
+| [0023](0023-no-token-database-opt-in.md) | No opt-in for reading `access_tokens.db` | Accepted, partially supersedes 0016 |
 
 New ADR: copy [template.md](template.md) and add a row to this table.

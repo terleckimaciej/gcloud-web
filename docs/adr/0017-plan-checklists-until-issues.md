@@ -1,6 +1,6 @@
 # 0017. Milestone checklists stay in the plan for now
 
-- Status: Accepted, partially supersedes [0014](0014-docs-in-repo.md) (where open work is tracked)
+- Status: Superseded by [0021](0021-open-work-in-github-issues.md); it partially superseded [0014](0014-docs-in-repo.md) (where open work is tracked)
 - Date: 2026-10-24
 
 ## Context

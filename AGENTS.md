@@ -6,7 +6,8 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
 
 `gcw` ("gcloud web"): a `gh browse`-style CLI that opens Google Cloud services and resources in the browser, taking context from the gcloud configuration and offering instant TAB completion of resource names.
 
-- Plan and progress: [docs/plan.md](docs/plan.md). Tick checkboxes and the Status column once something is done and verified, in the same pull request as the change ([ADR-0017](docs/adr/0017-plan-checklists-until-issues.md)).
+- Open work: GitHub issues (`gh issue list`). A milestone is a release; `enhancement` is planned work, `idea` a proposal, `bug` a defect ([ADR-0021](docs/adr/0021-open-work-in-github-issues.md)).
+- Direction: [docs/plan.md](docs/plan.md). How gcw works: [docs/architecture.md](docs/architecture.md). Docs carry no status: never add checklists or "done" markers to them; progress is visible only in issues, milestones and merged pull requests.
 - Decisions: [docs/adr/](docs/adr/). A new decision is a new ADR plus a row in [docs/adr/README.md](docs/adr/README.md), committed with the code it concerns.
 - `docs/` is committed and written in English ([ADR-0014](docs/adr/0014-docs-in-repo.md)). The only exception is `docs/research.md`, a local Polish notebook excluded via `.git/info/exclude`; never commit it.
 
@@ -14,9 +15,9 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
 
 - **Runtime uses the standard library only.** Third-party packages are allowed in the dev group only (pytest, etc.).
 - **gcw navigates, gcloud operates.** No commands that change the state of cloud resources.
-- **The completion path (`gcw __complete`) never touches the network or spawns subprocesses**; it reads the cache only. Budget: < 50 ms. Do not add slow top-level imports; import lazily inside functions that are not on the completion path.
+- **The completion path (`gcw __complete`) never touches the network or spawns subprocesses**; it reads the cache only. Budget: < 100 ms ([ADR-0022](docs/adr/0022-tab-budget-100ms.md)). Do not add slow top-level imports; import lazily inside functions that are not on the completion path.
 - **URL routes are data, not logic.** Adding a service is primarily a registry entry, and every URL template must be verified against the real console.
-- **Do not import gcloud's code.** Read gcloud's files only where an ADR allows it (INI config, `access_tokens.db`), always with a fallback to the `gcloud` command.
+- **Do not import gcloud's code.** Read gcloud's files only where an ADR allows it: its INI configuration. Never read its credential files ([ADR-0023](docs/adr/0023-no-token-database-opt-in.md)); tokens come from `gcloud auth print-access-token`.
 
 ## Stack and commands
 
@@ -27,7 +28,9 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
 ## Workflow
 
 - **The user reviews every edit and wants to understand it.** For every file change, briefly explain (in Polish, in the chat) what you are changing, why, and how it connects to the rest of the code. Avoid large unexplained changes; split work into steps that can be read and understood one at a time.
-- **Docs change together with the code.** A pull request that completes plan items, changes a URL template's status or makes a decision updates `docs/plan.md` and `docs/adr/` in the same pull request.
+- **Work starts from an issue.** Read it first (`gh issue view N`); its Tasks and Done when are the scope. A pull request that finishes it says `Closes #N` in its description.
+- **New work becomes an issue, not a note in the docs.** Propose it as a ready-to-paste `gh issue create` command following the templates in `.github/ISSUE_TEMPLATE/` (feature: Context, Plan, Tasks, Done when; idea: Context, Proposal, Open questions).
+- **Docs change together with the code.** A pull request that changes behaviour updates `README.md` and `docs/architecture.md`; one that makes a decision adds an ADR. `docs/plan.md` changes only when the direction changes.
 - **Everything committed is in English**: code, identifiers, docstrings, comments, CLI messages, commit messages, docs, this file. Only the local `docs/research.md` stays in Polish.
 
 ## Commits and pull requests
