@@ -33,6 +33,8 @@ def gcloud_project(gcloud_dir):
         (["sql", "instances", "db", "--tab", "backups"], "sql/instances/db/backups?project=my-prj"),
         (["storage", "buckets", "b"], "storage/browser/b?project=my-prj"),
         (["storage", "buckets", "b/exports/2026"], "storage/browser/b/exports/2026?project=my-prj"),
+        (["storage", "buckets", "gs://b"], "storage/browser/b?project=my-prj"),
+        (["storage", "buckets", "gs://b/exports/2026"], "storage/browser/b/exports/2026?project=my-prj"),
         (["secrets", "pw"], "security/secret-manager/secret/pw/versions?project=my-prj"),
         (["secrets", "pw", "--tab", "overview"], "security/secret-manager/secret/pw/overview?project=my-prj"),
         (["artifacts", "repositories", "r", "-l", "eu"], "artifacts/docker/my-prj/eu/r?project=my-prj"),

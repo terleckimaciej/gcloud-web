@@ -41,7 +41,9 @@ def values(line: str) -> list[str]:
 def test_first_word_offers_services_commands_and_start_pages():
     """After ``gcw`` come services, gcw's own commands (described) and start pages."""
     ordered = candidates(["gcw", ""])
-    assert [value for value, _ in ordered[:6]] == ["services", "cache", "open", "env", "completion", ""]
+    assert [value for value, _ in ordered[:8]] == [
+        "services", "cache", "open", "env", "completion", "gcloud", "web-flag", "",
+    ]
     found = dict(ordered)
     assert found["run"] == ""
     assert found["cache"] == "show or refresh the local resource cache"
@@ -120,8 +122,9 @@ def test_cache_actions_services_and_kinds():
 
 
 def test_completion_offers_shells():
-    """``gcw completion <TAB>`` lists the supported shells."""
+    """``gcw completion <TAB>`` and ``gcw web-flag <TAB>`` list the supported shells."""
     assert values("gcw completion ") == ["bash", "zsh", "fish"]
+    assert values("gcw web-flag ") == ["bash", "zsh", "fish"]
 
 
 def test_complete_command_prints_tab_separated_lines(capsys):

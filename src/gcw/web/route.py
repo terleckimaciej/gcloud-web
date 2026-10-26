@@ -32,6 +32,8 @@ class Route:
             (``"region"`` or ``"zone"``).
         location_property: gcloud property ``(section, name)`` that supplies the
             location when ``-l/--location`` is not given, e.g. ``("run", "region")``.
+        name_prefix: URI scheme a user may paste before the name, as gcloud
+            prints it (``"gs://"`` for buckets); it is dropped from the name.
     """
 
     path: str
@@ -39,6 +41,13 @@ class Route:
     tabs: tuple[str, ...] = ()
     location_label: str = "region"
     location_property: tuple[str, str] | None = None
+    name_prefix: str | None = None
+
+    def strip_prefix(self, name: str) -> str:
+        """Return ``name`` without the route's ``name_prefix``, e.g. ``gs://b/x`` → ``b/x``."""
+        if self.name_prefix and name.startswith(self.name_prefix):
+            return name[len(self.name_prefix):]
+        return name
 
     def build(
         self,

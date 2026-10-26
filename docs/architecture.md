@@ -14,6 +14,8 @@ How gcw works. This document changes together with the code it describes; open w
 
 TAB is a separate, faster path: the shell script runs `gcw __complete -- WORDS…`, which `cli/main.py` hands to `cli/complete.py` before building the parser. It reads only the gcloud configuration files and the cache: no network, no subprocesses, no background refresh ([ADR-0006](adr/0006-cache-never-blocks-completion.md)).
 
+`gcw gcloud …` is handled before the parser too, because gcloud's flags are not gcw's. `cli/gcloud_syntax.py` turns the gcloud words into gcw arguments: it drops the verb (only read verbs are accepted), keeps the context flags under their names, and drops location flags when no resource is named. `cli/main.py` prints the result to stderr and runs it as an ordinary command ([ADR-0020](adr/0020-gcloud-syntax-input.md)). The `gcloud` function printed by `gcw web-flag` only calls `gcw gcloud` for command lines with `--web` ([ADR-0024](adr/0024-opt-in-gcloud-web-function.md)).
+
 ## Layout
 
 Layers as in [ADR-0011](adr/0011-project-structure.md); dependencies point down only: `cli` → `services` → (`api`, `cache`, `context`, `web`).
@@ -23,10 +25,11 @@ src/gcw/
   cli/
     main.py             # argparse; subcommands generated from the service registry
     complete.py         # __complete: candidates from the cache and config only
+    gcloud_syntax.py    # gcw gcloud: a gcloud command line → gcw arguments (data tables)
     lookup.py           # finding a named resource's location; live lookup on a cache miss
     resources.py        # gcw cache list / refresh
     pager.py            # long output through $GCW_PAGER, $PAGER or less
-    shell/              # bash/zsh/fish completion scripts
+    shell/              # bash/zsh/fish completion scripts and the gcloud … --web function
   context/
     gcloud_config.py    # reading gcloud's INI configuration files
     resolve.py          # flags, environment and configuration → Context

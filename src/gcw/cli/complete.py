@@ -45,6 +45,8 @@ COMMANDS = {
     "open": "open a console page no service command covers",
     "env": "switch the gcloud configuration of this shell",
     "completion": "print the shell completion script",
+    "gcloud": "open the page of a gcloud command, e.g. gcw gcloud run jobs describe nightly",
+    "web-flag": "print the shell function that adds --web to gcloud",
 }
 CACHE_ACTIONS = {"list": "show the cached resources", "refresh": "fetch resource names into the cache"}
 SHELLS = {"bash": "", "zsh": "", "fish": ""}
@@ -120,7 +122,7 @@ def _positional(positional: list[str], options: dict[str, str]) -> list[Candidat
     if not positional:
         return [*COMMANDS.items(), GROUP_BREAK, *_plain(sorted([*SERVICES, *LANDINGS]))]
     command, rest = positional[0], positional[1:]
-    if command == "completion":
+    if command in ("completion", "web-flag"):
         return _plain(SHELLS) if not rest else []
     if command == "env":
         return _configurations() if not rest else []
