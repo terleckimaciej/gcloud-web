@@ -14,7 +14,7 @@ The project, account and region come from your gcloud configuration, and TAB com
 
 **gcw navigates, gcloud operates.** gcw only opens pages; it never changes cloud resources.
 
-> Status: prototype. Console URL templates are drafts until checked against the real console; [docs/plan.md](docs/plan.md) tracks which ones are verified.
+> Status: prototype. Console URL templates are drafts until checked against the real console; [#19](https://github.com/terleckimaciej/gcloud-web/issues/19) tracks which ones are verified.
 
 ## Installation
 
@@ -120,4 +120,4 @@ uv run pytest
 uv run gcw …
 ```
 
-Tests never touch the network or your real gcloud configuration. The plan is in [docs/plan.md](docs/plan.md), decisions in [docs/adr/](docs/adr/README.md), and rules for contributors (human or AI) in [AGENTS.md](AGENTS.md). Adding a service starts with a module in `src/gcw/services/` that declares its routes as data.
+Tests never touch the network or your real gcloud configuration. Open work is in [issues](https://github.com/terleckimaciej/gcloud-web/issues), the direction in [docs/plan.md](docs/plan.md), how gcw works in [docs/architecture.md](docs/architecture.md), decisions in [docs/adr/](docs/adr/README.md), and rules for contributors (human or AI) in [AGENTS.md](AGENTS.md). Adding a service starts with a module in `src/gcw/services/` that declares its routes as data.

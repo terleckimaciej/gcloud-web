@@ -1,6 +1,6 @@
 # 0016. Access tokens come from the official gcloud command by default
 
-- Status: Accepted, supersedes [0007](0007-reuse-gcloud-auth.md)
+- Status: Accepted, supersedes [0007](0007-reuse-gcloud-auth.md); partially superseded by [0023](0023-no-token-database-opt-in.md) (no `GCW_FAST_TOKEN` opt-in)
 - Date: 2026-10-19
 
 ## Context
