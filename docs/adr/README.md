@@ -21,5 +21,6 @@
 | [0017](0017-plan-checklists-until-issues.md) | Milestone checklists stay in the plan for now | Accepted, partially supersedes 0014 |
 | [0018](0018-cache-commands.md) | Cache commands live under `gcw cache` | Accepted |
 | [0019](0019-service-names-follow-gcloud.md) | Service names follow gcloud's command groups | Accepted |
+| [0020](0020-gcloud-syntax-input.md) | gcloud command syntax as gcw input | Proposed |
 
 New ADR: copy [template.md](template.md) and add a row to this table.
