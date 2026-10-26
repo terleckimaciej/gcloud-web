@@ -6,7 +6,8 @@ Commands::
     gcw storage buckets [BUCKET[/PATH]]    list of buckets, a bucket, or a folder in it
 
 The name may carry a path after the bucket (``my-bucket/exports/2026``); the
-console browser opens that folder directly. Buckets need no location; the
+console browser opens that folder directly. It may also be written as gcloud
+prints it, ``gs://my-bucket/exports/2026``. Buckets need no location; the
 cached one is shown in listings only. Buckets are listed with the Cloud
 Storage JSON API. URL templates and endpoints are unverified until checked
 against the real console and API.
@@ -26,6 +27,7 @@ KINDS = {
     "buckets": Route(
         path="storage/browser/{name}",
         list_path="storage/browser",
+        name_prefix="gs://",
     ),
 }
 

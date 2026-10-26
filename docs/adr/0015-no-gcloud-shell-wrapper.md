@@ -1,6 +1,6 @@
 # 0015. No shell wrapper around gcloud
 
-- Status: Accepted, supersedes [0009](0009-gcloud-web-shell-wrapper.md)
+- Status: Accepted, supersedes [0009](0009-gcloud-web-shell-wrapper.md); partially superseded by [0024](0024-opt-in-gcloud-web-function.md) (an opt-in `gcloud … --web` function)
 - Date: 2026-10-19
 
 ## Context

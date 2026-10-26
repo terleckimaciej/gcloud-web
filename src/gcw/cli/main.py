@@ -10,7 +10,7 @@ command. Commands::
     gcw SERVICE [NAME]                   the same for a service with a single kind
     gcw SERVICE                          start page of a service that has no routes yet
     gcw open PATH                        open any console page no service command covers
-
+    gcw gcloud GCLOUD_ARGS...            open the page of a gcloud read command (ADR-0020)
     gcw cache list [SERVICE [KIND]]      show the cached resources (alias: ls)
     gcw cache refresh [SERVICE [KIND]]   fetch resource names into the local cache
     gcw completion bash|zsh|fish         print the shell completion script
@@ -42,6 +42,8 @@ OWN_COMMANDS = {
     "open": "open a console page no service command covers",
     "env": "switch the gcloud configuration of this shell",
     "completion": "print the shell completion script",
+    "gcloud": "open the page of a gcloud command, e.g. gcw gcloud run jobs describe nightly",
+    "web-flag": "print the shell function that adds --web to gcloud",
 }
 
 # Shown at the end of `gcw --help`. The command list above it cannot carry every
@@ -224,19 +226,45 @@ def build_parser() -> argparse.ArgumentParser:
 
     # help=SUPPRESS: argparse's own list would mix gcw's commands and the GCP
     # services in one flat section; _commands_help() lists them in two groups.
-    commands = parser.add_subparsers(dest="command", metavar="COMMAND", help=argparse.SUPPRESS)
+    # prog: without it, subcommand usage would start with the custom top-level usage above.
+    commands = parser.add_subparsers(dest="command", metavar="COMMAND", help=argparse.SUPPRESS, prog="gcw")
     open_command = commands.add_parser("open", description="open any path after console.cloud.google.com/, with "
                                        "the project and account added; for a supported service use its "
                                        "command instead (`gcw run jobs`, not `gcw open run/jobs`)")
     _add_global_flags(open_command, with_defaults=False)
     open_command.add_argument("path", help="path after console.cloud.google.com/")
+    # Parsed by gcw.cli.gcloud_syntax, not here (see main); registered for --help and the command list.
+    gcloud_command = commands.add_parser(
+        "gcloud",
+        description="open the console page of a gcloud read command (describe, list, get-iam-policy): "
+        "gcw gcloud run jobs describe nightly --region europe-west1 opens the job. Prints the matching "
+        "gcw command to stderr. gcw's -n and --no-authuser go at the end, with the gcloud flags.",
+    )
+    gcloud_command.add_argument("words", nargs=argparse.REMAINDER, metavar="GCLOUD_ARGS",
+                                help="a gcloud command line without the leading `gcloud`")
+    web_flag = commands.add_parser(
+        "web-flag",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="print a shell function named gcloud: a gcloud command line with --web opens its\n"
+        "console page through `gcw gcloud`, any other runs gcloud unchanged (ADR-0024).\n\n"
+        f"{_enable_help('web-flag')}\n\n"
+        "Then open a new terminal and try: gcloud run jobs list --web",
+    )
+    web_flag.add_argument("shell", choices=["bash", "zsh", "fish"])
+    web_flag.add_argument("--install", action="store_true",
+                          help="add the line that loads the function to the shell's startup file")
     # Need no context, so they take no global flags.
     commands.add_parser("services", description=OWN_COMMANDS["services"])
     _add_cache_commands(commands)
-    completion = commands.add_parser("completion", description="print the shell completion script; "
-                                     'enable it with eval "$(gcw completion bash)" (or zsh), '
-                                     "or `gcw completion fish | source`")
+    completion = commands.add_parser(
+        "completion",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=f"print the TAB completion script for gcw.\n\n{_enable_help('completion')}\n\n"
+        "In zsh the line has to come after compinit; --install adds it at the end of ~/.zshrc.",
+    )
     completion.add_argument("shell", choices=["bash", "zsh", "fish"])
+    completion.add_argument("--install", action="store_true",
+                            help="add the line that loads completion to the shell's startup file")
     env = commands.add_parser("env", description="print the command that switches the gcloud configuration of "
                               'the current shell only; use it as eval "$(gcw env CONFIGURATION)", '
                               "or `gcw env CONFIGURATION --shell fish | source`")
@@ -297,6 +325,85 @@ def _services_listing() -> str:
     return "\n".join(lines)
 
 
+STARTUP_FILES = {"bash": "~/.bashrc", "zsh": "~/.zshrc", "fish": "~/.config/fish/config.fish"}
+
+
+def _startup_line(command: str, shell: str) -> str:
+    """Return the startup-file line that loads ``gcw <command> <shell>`` in every new shell."""
+    if shell == "fish":
+        return f"gcw {command} fish | source"
+    return f'eval "$(gcw {command} {shell})"'
+
+
+def _enable_help(command: str) -> str:
+    """Explain in ``--help`` how to enable ``gcw completion`` or ``gcw web-flag`` for good."""
+    runs = "\n".join(f"  gcw {command} {shell} --install" for shell in STARTUP_FILES)
+    adds = "\n".join(f"  {_startup_line(command, shell):<40}{path}" for shell, path in STARTUP_FILES.items())
+    return (
+        f"To enable it in every new terminal, run once for your shell:\n\n{runs}\n\n"
+        "--install appends one line to the shell's startup file, unless it is already there:\n\n"
+        f"{adds}\n\n"
+        "Without --install the script is only printed."
+    )
+
+
+def _startup_file(shell: str):
+    """Return the startup file of ``shell``: ``~/.bashrc``, ``$ZDOTDIR/.zshrc`` or fish's ``config.fish``."""
+    import os
+    from pathlib import Path
+
+    home = Path.home()
+    if shell == "zsh":
+        return Path(os.environ.get("ZDOTDIR") or home) / ".zshrc"
+    if shell == "fish":
+        return Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config") / "fish" / "config.fish"
+    return home / ".bashrc"
+
+
+def _install_startup_line(command: str, shell: str) -> int:
+    """Append the line that loads ``gcw <command> <shell>`` to the shell's startup file, once.
+
+    Returns:
+        0; the message says whether the line was added or already there.
+    """
+    line = _startup_line(command, shell)
+    path = _startup_file(shell)
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    if line in text.splitlines():
+        print(f"already enabled: {path} has `{line}`")
+        return 0
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as startup:
+        startup.write(("\n" if text and not text.endswith("\n") else "") + line + "\n")
+    print(f"added `{line}` to {path}; open a new terminal to use it")
+    return 0
+
+
+def _gcloud_command(words: list[str]) -> int:
+    """Run ``gcw gcloud …``: translate a gcloud command line and run the gcw command it names.
+
+    The translated command is printed to stderr, so the user sees the plain gcw
+    spelling, then run through ``main`` like any other command (ADR-0020).
+
+    Args:
+        words: The gcloud command line after ``gcloud``.
+
+    Returns:
+        The exit code of the translated command, or 2 if it cannot be translated.
+    """
+    import shlex
+
+    from gcw.cli.gcloud_syntax import TranslationError, translate
+
+    try:
+        translated = translate(words)
+    except TranslationError as error:
+        print(f"gcw: {error}", file=sys.stderr)
+        return 2
+    print(f"same as: {shlex.join(['gcw', *translated])}", file=sys.stderr)
+    return main(translated)
+
+
 def _service_path(args: argparse.Namespace, context: Context) -> str:
     """Return the console path for a service command.
 
@@ -317,6 +424,7 @@ def _service_path(args: argparse.Namespace, context: Context) -> str:
     route = module.KINDS[kind]
     if args.name is None:
         return route.list_path or module.LANDING
+    name = route.strip_prefix(args.name)
 
     from gcw.cli.lookup import link_url, resource_location
 
@@ -324,10 +432,10 @@ def _service_path(args: argparse.Namespace, context: Context) -> str:
         if getattr(args, f"link_{link_name}", False):
             if kind != link.kind:
                 raise RouteError(f"--{link_name} applies to {module.NAME} {link.kind} only")
-            return link_url(context, module.NAME, link, args.name)
+            return link_url(context, module.NAME, link, name)
 
-    location = resource_location(context, module.NAME, kind, route, args.name, args.location)
-    return route.build(args.name, location=location, tab=args.tab, project=context.project)
+    location = resource_location(context, module.NAME, kind, route, name, args.location)
+    return route.build(name, location=location, tab=args.tab, project=context.project)
 
 
 def _open_or_print(path: str, context: Context, *, no_browser: bool, with_authuser: bool) -> int:
@@ -428,13 +536,24 @@ def main(argv: list[str] | None = None) -> int:
         from gcw.cli.complete import run
 
         return run(argv[1:])
+    # gcloud's flags (--region, --format, --web…) are not gcw's, so argparse never sees them.
+    if argv[:1] == ["gcloud"] and argv[1:] not in (["-h"], ["--help"]):
+        return _gcloud_command(argv[1:])
 
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command == "completion":
+    if args.command == "gcloud":
+        parser.error("gcw flags go at the end of a gcloud command line, e.g. gcw gcloud run jobs list -n")
+    if args.command in ("completion", "web-flag"):
+        if args.install:
+            return _install_startup_line(args.command, args.shell)
         from importlib.resources import files
 
-        print(files("gcw.cli").joinpath("shell", f"gcw.{args.shell}").read_text(encoding="utf-8"), end="")
+        if args.command == "completion":
+            script = f"gcw.{args.shell}"
+        else:
+            script = "web-flag.fish" if args.shell == "fish" else "web-flag.sh"
+        print(files("gcw.cli").joinpath("shell", script).read_text(encoding="utf-8"), end="")
         return 0
     if args.command == "env":
         return _env_command(args.configuration, args.shell)
