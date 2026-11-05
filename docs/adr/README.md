@@ -26,5 +26,6 @@
 | [0022](0022-tab-budget-100ms.md) | TAB completion budget: 100 ms | Accepted |
 | [0023](0023-no-token-database-opt-in.md) | No opt-in for reading `access_tokens.db` | Accepted, partially supersedes 0016 |
 | [0024](0024-opt-in-gcloud-web-function.md) | gcw prints an opt-in `gcloud … --web` shell function | Accepted, partially supersedes 0015 |
+| [0025](0025-release-process.md) | Releases on PyPI, driven by manual tags | Accepted |
 
 New ADR: copy [template.md](template.md) and add a row to this table.
