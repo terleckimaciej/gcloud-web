@@ -2,6 +2,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/terleckimaciej/gcloud-web/ci.yml?branch=master&label=CI&logo=github)](https://github.com/terleckimaciej/gcloud-web/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+[![PyPI](https://img.shields.io/pypi/v/gcw?logo=pypi&logoColor=white)](https://pypi.org/project/gcw/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/terleckimaciej/gcloud-web/blob/master/LICENSE)
 
 gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command: name a service or resource the way gcloud does, and its console page opens.
@@ -19,7 +20,7 @@ The project, account and region come from your gcloud configuration, and TAB com
 
 **gcw navigates, gcloud operates.** gcw only opens pages; it never changes cloud resources.
 
-> Status: prototype. Console URL templates are drafts until checked against the real console; [#19](https://github.com/terleckimaciej/gcloud-web/issues/19) tracks which ones are verified.
+> Status: prototype. Console URL templates are checked by hand against the real console, except the resource pages of Cloud Functions and Composer ([#35](https://github.com/terleckimaciej/gcloud-web/issues/35)).
 
 **Documentation:** [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md) · [Decisions](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/adr/README.md) · [Issues](https://github.com/terleckimaciej/gcloud-web/issues) · [Plan](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/plan.md)
 
@@ -40,13 +41,13 @@ The project, account and region come from your gcloud configuration, and TAB com
 
 You need the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) with `gcloud auth login` done, and Python 3.11+ on your system. gcw has no other dependencies.
 
-gcw is not on PyPI yet, so install it from GitHub with [pipx](https://pipx.pypa.io/):
+Install gcw from PyPI with [pipx](https://pipx.pypa.io/):
 
 ```
-pipx install git+https://github.com/terleckimaciej/gcloud-web
+pipx install gcw
 ```
 
-pipx puts gcw in its own isolated environment and only the `gcw` command on your `PATH`, so nothing mixes with your other Python packages. If you use [uv](https://docs.astral.sh/uv/), `uv tool install git+https://github.com/terleckimaciej/gcloud-web` does the same.
+pipx puts gcw in its own isolated environment and only the `gcw` command on your `PATH`, so nothing mixes with your other Python packages. If you use [uv](https://docs.astral.sh/uv/), `uv tool install gcw` does the same.
 
 ### TAB completion
 
