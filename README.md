@@ -2,6 +2,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/terleckimaciej/gcloud-web/ci.yml?branch=master&label=CI&logo=github)](https://github.com/terleckimaciej/gcloud-web/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command: name a service or resource the way gcloud does, and its console page opens.
 
@@ -35,6 +36,7 @@ The project, account and region come from your gcloud configuration, and TAB com
 - [Security](#security)
 - [Platforms](#platforms)
 - [Development](#development)
+- [License](#license)
 
 ## Installation
 
@@ -141,7 +143,7 @@ $ gcloud storage ls gs://my-bucket/exports --web                 # the folder
 
 `--web` works on commands that read: `describe`, `list`, `get-iam-policy` and `storage ls`. A command that changes something (`update`, `deploy`, `delete`…) is neither run nor opened; gcw says so and names the nearest page. gcw prints the matching gcw command first, so you also learn the shorter spelling. Without `--web`, `gcloud` runs exactly as before.
 
-On a `gcloud` line, TAB is gcloud's own completion, so you lose what gcw's TAB gives: resource names and tabs from gcw's local cache. To explore, use plain gcw with TAB (recomended); reach for `--web` when you already have the gcloud command in front of you.
+On a `gcloud` line, TAB is gcloud's own completion, so you lose what gcw's TAB gives: resource names and tabs from gcw's local cache. To explore, use plain gcw with TAB; reach for `--web` when you already have the gcloud command in front of you (recomended).
 
 Without the shell function (in scripts, PowerShell or cmd), put `gcw` in front instead: `gcw gcloud run jobs describe nightly --region europe-west1`. Add `-n` at the end to print the URL.
 
@@ -175,3 +177,7 @@ uv run gcw …
 ```
 
 Tests never touch the network or your real gcloud configuration. Adding a service starts with a module in `src/gcw/services/` that declares its routes as data; see [Architecture](docs/architecture.md).
+
+## License
+
+gcw is licensed under the [Apache License 2.0](LICENSE).
