@@ -86,6 +86,8 @@ Levels: **L0** a service page, **L1** one resource, **L2** a tab of a resource p
 
 Every URL gets `?project={project}`; templates that already have a `?` are joined with `&`. `authuser={account}` is added only when opening the browser, so the console picks the right Google account when several are signed in. URLs printed by `-n` come without it, so they never contain an email address.
 
+`web/browser.py` opens the URL. On Linux, unless `$BROWSER` is set, it starts `xdg-open` (`wslview` under WSL) itself, with stdin, stdout and stderr discarded and in a new session, and does not wait: the standard `webbrowser` module would let the browser inherit the terminal, and its messages would land below the prompt after gcw has returned. Everywhere else, and when no launcher is found, `webbrowser` opens it; on macOS and Windows the system starts the browser detached anyway.
+
 ## Principles
 
 - Standard-library-only runtime ([0002](adr/0002-python-stdlib-only.md)), `src/` layout and uv ([0003](adr/0003-src-layout-uv.md)).
