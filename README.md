@@ -164,7 +164,7 @@ gcw reads your account, project and default regions from gcloud's configuration 
 
 ## Platforms
 
-Tried by hand on Linux. macOS and Windows are covered by the automated tests on every change but not yet tried by hand. TAB completion works in bash, zsh and fish (on Windows, in Git Bash); in cmd and PowerShell every command works without completion. In WSL the browser runs on the Windows side, so you may need `export BROWSER=wslview`.
+Tried by hand on Linux. macOS and Windows are covered by the automated tests on every change but not yet tried by hand. TAB completion works in bash, zsh and fish (on Windows, in Git Bash); in cmd and PowerShell every command works without completion. In WSL, gcw opens the Windows browser through `wslview` (from the `wslu` package).
 
 ## Development
 
