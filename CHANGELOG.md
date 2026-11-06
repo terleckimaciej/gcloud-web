@@ -2,9 +2,9 @@
 
 All notable changes to gcw are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [ADR-0025](docs/adr/0025-release-process.md): 0.x while gcw is a prototype, a breaking change bumps the minor version.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-06
 
-First release.
+First release. Console URL templates were checked by hand against the real console, except the resource pages of Cloud Functions and Composer ([#35](https://github.com/terleckimaciej/gcloud-web/issues/35)).
 
 ### Added
 
