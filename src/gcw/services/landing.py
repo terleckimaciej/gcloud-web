@@ -39,7 +39,6 @@ LANDINGS: dict[str, Landing] = {
     # Build and delivery
     "build": Landing("cloud-build/builds", "Cloud Build history and triggers"),
     "deploy": Landing("deploy/delivery-pipelines", "Cloud Deploy delivery pipelines"),
-    "source": Landing("source/repos", "Cloud Source Repositories"),
     # Serverless and integration
     "workflows": Landing("workflows", "Workflows"),
     "scheduler": Landing("cloudscheduler", "Cloud Scheduler jobs"),
