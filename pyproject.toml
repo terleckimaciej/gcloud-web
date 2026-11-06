@@ -2,10 +2,30 @@
 name = "gcw"
 version = "0.1.0"
 description = "Open Google Cloud console pages for gcloud services and resources from the terminal."
+readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+authors = [{ name = "Maciej Terlecki", email = "maciek.terlecki1807@gmail.com" }]
+keywords = ["gcloud", "google-cloud", "gcp", "cli", "console"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/terleckimaciej/gcloud-web"
+Issues = "https://github.com/terleckimaciej/gcloud-web/issues"
+Changelog = "https://github.com/terleckimaciej/gcloud-web/blob/master/CHANGELOG.md"
 
 [project.scripts]
 gcw = "gcw.cli.main:main"

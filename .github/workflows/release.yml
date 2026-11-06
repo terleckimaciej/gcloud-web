@@ -1,0 +1,46 @@
+name: Release
+
+# Publishes gcw to PyPI when a tag vX.Y.Z is pushed (ADR-0025).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # The version lives in pyproject.toml; the tag must match it.
+      - name: Check that the tag matches the project version
+        run: |
+          version="$(uv version --short)"
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
+            exit 1
+          fi
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # Only this job can publish: it builds nothing, gets the OIDC token that
+  # PyPI Trusted Publishing checks, and waits for approval in `pypi`.
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/gcw/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

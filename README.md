@@ -2,11 +2,9 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/terleckimaciej/gcloud-web/ci.yml?branch=master&label=CI&logo=github)](https://github.com/terleckimaciej/gcloud-web/actions/workflows/ci.yml)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/terleckimaciej/gcloud-web/blob/master/LICENSE)
 
 gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command: name a service or resource the way gcloud does, and its console page opens.
-
-The terminal is great for running things and poor for exploring and looking at them. The console shows all of it well, but getting there means clicking your way through a console that is slow above all and has no custom keyboard shortcuts, which is both frustrating and a waste of time.
 
 ```
 $ gcloud run services describe api --region europe-west1   # YAML in the terminal
@@ -23,7 +21,7 @@ The project, account and region come from your gcloud configuration, and TAB com
 
 > Status: prototype. Console URL templates are drafts until checked against the real console; [#19](https://github.com/terleckimaciej/gcloud-web/issues/19) tracks which ones are verified.
 
-**Documentation:** [Architecture](docs/architecture.md) · [Decisions](docs/adr/README.md) · [Issues](https://github.com/terleckimaciej/gcloud-web/issues) · [Plan](docs/plan.md)
+**Documentation:** [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md) · [Decisions](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/adr/README.md) · [Issues](https://github.com/terleckimaciej/gcloud-web/issues) · [Plan](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/plan.md)
 
 ## Contents
 
@@ -176,8 +174,8 @@ uv run pytest
 uv run gcw …
 ```
 
-Tests never touch the network or your real gcloud configuration. Adding a service starts with a module in `src/gcw/services/` that declares its routes as data; see [Architecture](docs/architecture.md).
+Tests never touch the network or your real gcloud configuration. Adding a service starts with a module in `src/gcw/services/` that declares its routes as data; see [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md).
 
 ## License
 
-gcw is licensed under the [Apache License 2.0](LICENSE).
+gcw is licensed under the [Apache License 2.0](https://github.com/terleckimaciej/gcloud-web/blob/master/LICENSE).
