@@ -82,7 +82,7 @@ Levels: **L0** a service page, **L1** one resource, **L2** a tab of a resource p
 | `gcw composer environments [env] [--tab monitoring\|logs\|dags]` | L2 | `composer/environments/detail/{location}/{name}/{tab}` |
 | `gcw composer environments env --airflow` | L1 | the Airflow UI address from the cache (`LINKS` in the module) |
 | `gcw iam [service-accounts EMAIL]` | L0/L1 | `iam-admin/iam`, `iam-admin/serviceaccounts/details/{name}` |
-| `gcw <service>` (55 start pages) | L0 | a static list in `services/landing.py` |
+| `gcw <service>` (54 start pages) | L0 | a static list in `services/landing.py` |
 
 Every URL gets `?project={project}`; templates that already have a `?` are joined with `&`. `authuser={account}` is added only when opening the browser, so the console picks the right Google account when several are signed in. URLs printed by `-n` come without it, so they never contain an email address.
 
