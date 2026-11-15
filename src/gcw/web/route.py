@@ -7,6 +7,8 @@ Its ``path`` template uses these placeholders:
     {location}   region or zone, whichever the service uses
     {tab}        page tab; the first entry of ``tabs`` is the default
     {project}    project ID, for the few pages that need it in the path
+    {dataset}    first part of a ``DATASET.TABLE`` name (BigQuery tables)
+    {table}      second part of a ``DATASET.TABLE`` name
 
 This module only fills templates. Where the values come from (flags, gcloud
 configuration, cache) is decided by the caller.
@@ -74,8 +76,11 @@ class Route:
             allowed = ", ".join(self.tabs) or "none"
             raise RouteError(f"unknown tab {tab!r} (available: {allowed})")
 
+        dataset, _, table = name.partition(".")
         values = {
             "name": name,
+            "dataset": dataset,
+            "table": table,
             "location": location,
             "tab": tab or (self.tabs[0] if self.tabs else None),
             "project": project,

@@ -47,7 +47,7 @@ def test_first_word_offers_services_commands_and_start_pages():
     found = dict(ordered)
     assert found["run"] == ""
     assert found["cache"] == "show or refresh the local resource cache"
-    assert "bigquery" in found
+    assert "tasks" in found
     assert values("gcw ru") == ["run"]
     assert "" not in values("gcw c")
 

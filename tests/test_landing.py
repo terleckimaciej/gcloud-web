@@ -84,8 +84,8 @@ def test_landing_command_prints_its_url(name, landing, capsys):
 
 def test_landing_command_takes_global_flags_after_it(capsys):
     """Global flags work after a landing command, as they do everywhere else."""
-    assert main(["bigquery", "-n", "-p", "other-prj"]) == 0
-    assert capsys.readouterr().out == f"{CONSOLE}/bigquery?project=other-prj\n"
+    assert main(["tasks", "-n", "-p", "other-prj"]) == 0
+    assert capsys.readouterr().out == f"{CONSOLE}/cloudtasks?project=other-prj\n"
 
 
 @pytest.mark.parametrize("extra", [["topics"], ["--tab", "logs"], ["-l", "europe-west1"]])
@@ -96,7 +96,7 @@ def test_landing_command_takes_no_resource_arguments(extra, capsys):
     routes (then its landing entry is replaced by that module).
     """
     with pytest.raises(SystemExit) as exc:
-        main(["pubsub", *extra])
+        main(["tasks", *extra])
 
     assert exc.value.code == 2
     assert "unrecognized arguments" in capsys.readouterr().err
@@ -108,13 +108,13 @@ def test_landing_commands_are_hidden_from_the_command_list(capsys):
         main(["--help"])
 
     help_text = capsys.readouterr().out
-    assert "    bigquery" not in help_text
+    assert "    tasks" not in help_text
     assert "Many more services have a start page" in help_text
 
 
 def test_landing_command_has_its_own_help(capsys):
     """``gcw <service> --help`` still describes the hidden command."""
     with pytest.raises(SystemExit):
-        main(["bigquery", "--help"])
+        main(["tasks", "--help"])
 
-    assert LANDINGS["bigquery"].help in capsys.readouterr().out
+    assert LANDINGS["tasks"].help in capsys.readouterr().out

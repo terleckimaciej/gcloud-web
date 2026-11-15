@@ -31,7 +31,7 @@ from gcw.cli.gcloud_syntax import TranslationError, translate
         ("storage ls", "storage buckets"),
         ("storage buckets describe gs://bucket", "storage buckets gs://bucket"),
         # Start pages open whatever follows.
-        ("pubsub topics list --web", "pubsub"),
+        ("workflows list --web", "workflows"),
     ],
 )
 def test_read_commands_translate(gcloud, gcw):
@@ -54,7 +54,7 @@ def test_gcw_flags_pass_through():
 
 @pytest.mark.parametrize(
     "gcloud",
-    ["run jobs list --region europe-west1", "functions list --region europe-west1", "pubsub topics list --region x"],
+    ["run jobs list --region europe-west1", "functions list --region europe-west1", "workflows list --region x"],
 )
 def test_location_is_dropped_without_a_name(gcloud):
     """List and start pages take no location, so gcw would reject it there."""

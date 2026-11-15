@@ -207,7 +207,7 @@ def test_services_lists_both_registries(capsys):
     assert "run             Cloud Run services and jobs" in out
     assert "    jobs          tabs: executions, logs, triggers, yaml" in out
     assert "start pages only:" in out
-    assert "bigquery        BigQuery studio and datasets" in out
+    assert "tasks           Cloud Tasks queues" in out
 
 
 def test_services_needs_no_gcloud_context(capsys, gcloud_dir):

@@ -38,13 +38,16 @@ from types import ModuleType
 
 from gcw.services import (
     artifacts,
+    bigquery,
     composer,
     compute,
     container,
     dataproc,
     functions,
     iam,
+    pubsub,
     run,
+    scheduler,
     secrets,
     sql,
     storage,
@@ -53,7 +56,10 @@ from gcw.services.landing import LANDINGS, Landing
 
 SERVICES: dict[str, ModuleType] = {
     module.NAME: module
-    for module in (run, functions, compute, container, sql, storage, secrets, artifacts, dataproc, composer, iam)
+    for module in (
+        run, functions, compute, container, sql, storage, secrets, artifacts, dataproc, composer, iam,
+        pubsub, bigquery, scheduler,
+    )
 }
 
 

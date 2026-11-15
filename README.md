@@ -93,7 +93,8 @@ gcw run services api --tab logs           another tab of that page
 gcw secrets db-password                   services with a single kind skip it: functions, secrets
 gcw storage buckets my-bucket/exports     a folder in a bucket
 gcw composer environments etl --airflow   the environment's Airflow UI
-gcw bigquery                              start pages of about 50 more services
+gcw bigquery tables sales.orders          a BigQuery table (DATASET.TABLE); also pubsub topics, scheduler jobs
+gcw workflows                             start pages of about 50 more services
 gcw open logs/query                       a page no service command covers, by its console path
 ```
 
