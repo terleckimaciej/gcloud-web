@@ -47,6 +47,7 @@ src/gcw/
     __init__.py         # the registry
     run.py functions.py compute.py container.py sql.py storage.py
     secrets.py artifacts.py dataproc.py composer.py iam.py
+    pubsub.py bigquery.py scheduler.py
     landing.py          # start pages of services without resource routes
 ```
 
@@ -82,7 +83,12 @@ Levels: **L0** a service page, **L1** one resource, **L2** a tab of a resource p
 | `gcw composer environments [env] [--tab monitoring\|logs\|dags]` | L2 | `composer/environments/detail/{location}/{name}/{tab}` |
 | `gcw composer environments env --airflow` | L1 | the Airflow UI address from the cache (`LINKS` in the module) |
 | `gcw iam [service-accounts EMAIL]` | L0/L1 | `iam-admin/iam`, `iam-admin/serviceaccounts/details/{name}` |
-| `gcw <service>` (54 start pages) | L0 | a static list in `services/landing.py` |
+| `gcw pubsub topics [topic]` | L1 | `cloudpubsub/topic/detail/{name}` |
+| `gcw pubsub subscriptions [sub]` | L1 | `cloudpubsub/subscription/detail/{name}` |
+| `gcw bigquery datasets [dataset]` | L1 | `bigquery?ws=!1m4!1m3!3m2!1s{project}!2s{name}` |
+| `gcw bigquery tables [dataset.table]` | L1 | `bigquery?ws=!1m5!1m4!4m3!1s{project}!2s{dataset}!3s{table}`: the name is split at the first dot |
+| `gcw scheduler jobs [job]` | L1 | `cloudscheduler/jobs/edit/{location}/{name}` |
+| `gcw <service>` (51 start pages) | L0 | a static list in `services/landing.py` |
 
 Every URL gets `?project={project}`; templates that already have a `?` are joined with `&`. `authuser={account}` is added only when opening the browser, so the console picks the right Google account when several are signed in. URLs printed by `-n` come without it, so they never contain an email address.
 

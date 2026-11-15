@@ -292,7 +292,7 @@ def _commands_help() -> str:
     lines += [f"    {name:<{column}}{module.HELP}" for name, module in SERVICES.items()]
     lines += [
         "",
-        f"  Many more services have a start page only, like `gcw bigquery` ({len(LANDINGS)} in all);",
+        f"  Many more services have a start page only, like `gcw tasks` ({len(LANDINGS)} in all);",
         "  run `gcw services` for all of them, with their kinds and tabs.",
     ]
     return "\n".join(lines)

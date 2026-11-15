@@ -1,6 +1,6 @@
 """Landing pages (level L0): services reachable by name alone, without a resource cache.
 
-``gcw bigquery`` opens the BigQuery start page, ``gcw pubsub`` the Pub/Sub one.
+``gcw tasks`` opens the Cloud Tasks start page, ``gcw workflows`` the Workflows one.
 These services have no routes and no resource listing yet, so one table of
 ``name -> Landing`` replaces what would otherwise be dozens of near-empty
 service modules.
@@ -23,7 +23,7 @@ class Landing:
     """The start page of a service that has no routes of its own.
 
     Attributes:
-        path: Console path opened by ``gcw <name>``, e.g. ``"cloudpubsub"``.
+        path: Console path opened by ``gcw <name>``, e.g. ``"cloudtasks"``.
         help: One-line description shown in ``gcw services``.
     """
 
@@ -41,9 +41,7 @@ LANDINGS: dict[str, Landing] = {
     "deploy": Landing("deploy/delivery-pipelines", "Cloud Deploy delivery pipelines"),
     # Serverless and integration
     "workflows": Landing("workflows", "Workflows"),
-    "scheduler": Landing("cloudscheduler", "Cloud Scheduler jobs"),
     "tasks": Landing("cloudtasks", "Cloud Tasks queues"),
-    "pubsub": Landing("cloudpubsub", "Pub/Sub topics and subscriptions"),
     "eventarc": Landing("eventarc/triggers", "Eventarc triggers"),
     "apigateway": Landing("api-gateway/apis", "API Gateway APIs"),
     "apigee": Landing("apigee", "Apigee API management"),
@@ -54,7 +52,6 @@ LANDINGS: dict[str, Landing] = {
     "memorystore": Landing("memorystore/redis/instances", "Memorystore for Redis instances"),
     "alloydb": Landing("alloydb/clusters", "AlloyDB clusters"),
     # Data and analytics
-    "bigquery": Landing("bigquery", "BigQuery studio and datasets"),
     "dataflow": Landing("dataflow/jobs", "Dataflow jobs"),
     "dataplex": Landing("dataplex", "Dataplex lakes and catalog"),
     "datastream": Landing("datastream/streams", "Datastream streams"),

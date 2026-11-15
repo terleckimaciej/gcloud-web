@@ -207,3 +207,42 @@ def test_registry_import_stays_off_the_network_stack():
     code = "import sys, gcw.services; print(sorted(m for m in ('ssl', 'urllib.request') if m in sys.modules))"
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert result.stdout.strip() == "[]"
+
+
+def test_pubsub_topics_and_subscriptions(api):
+    """Pub/Sub names are reduced to their last part; both kinds are global."""
+    api["https://pubsub.googleapis.com/v1/projects/my-prj/topics"] = {
+        "topics": [{"name": "projects/my-prj/topics/events"}]
+    }
+    api["https://pubsub.googleapis.com/v1/projects/my-prj/subscriptions"] = {
+        "subscriptions": [{"name": "projects/my-prj/subscriptions/events-sub"}]
+    }
+    assert listing("pubsub", "topics") == [Resource("events")]
+    assert listing("pubsub", "subscriptions") == [Resource("events-sub")]
+
+
+def test_bigquery_datasets_keep_lowercase_location(api):
+    """Datasets come from the v2 API; the location is lower-cased like other services'."""
+    api["https://bigquery.googleapis.com/bigquery/v2/projects/my-prj/datasets"] = {
+        "datasets": [{"datasetReference": {"datasetId": "sales"}, "location": "EU"}]
+    }
+    assert listing("bigquery", "datasets") == [Resource("sales", "eu")]
+
+
+def test_bigquery_tables_are_dataset_qualified(api):
+    """Tables are listed per dataset and named ``DATASET.TABLE``; an unreadable dataset is skipped."""
+    base = "https://bigquery.googleapis.com/bigquery/v2/projects/my-prj/datasets"
+    api[base] = {"datasets": [{"datasetReference": {"datasetId": "a"}}, {"datasetReference": {"datasetId": "b"}}]}
+    api[f"{base}/a/tables"] = {"tables": [{"tableReference": {"tableId": "orders"}}]}
+    # No response for b: the fake answers 404.
+
+    assert listing("bigquery", "tables") == [Resource("a.orders")]
+
+
+def test_scheduler_jobs_per_location(api):
+    """Scheduler jobs are listed location by location, names end with the job ID."""
+    base = "https://cloudscheduler.googleapis.com/v1/projects/my-prj/locations"
+    api[base] = {"locations": [{"locationId": "eu1"}]}
+    api[f"{base}/eu1/jobs"] = {"jobs": [{"name": "projects/my-prj/locations/eu1/jobs/nightly"}]}
+
+    assert listing("scheduler", "jobs") == [Resource("nightly", "eu1")]
