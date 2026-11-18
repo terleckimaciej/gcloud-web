@@ -7,6 +7,8 @@
 
 gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command: name a service or resource the way gcloud does, and its console page opens.
 
+![gcw in a terminal: TAB completes the kind, name and tab of a Cloud Run page and gcw opens it in the console; the same for a gcloud command with --web](https://raw.githubusercontent.com/terleckimaciej/gcloud-web/master/demo/demo.gif)
+
 ```
 $ gcloud run services describe api --region europe-west1   # YAML in the terminal
 $ gcw run services api                                     # gets opened in the web console
