@@ -5,22 +5,17 @@
 [![PyPI](https://img.shields.io/pypi/v/gcw?logo=pypi&logoColor=white)](https://pypi.org/project/gcw/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/terleckimaciej/gcloud-web/blob/master/LICENSE)
 
-gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command: name a service or resource the way gcloud does, and its console page opens.
+gcw opens any page of the Google Cloud console in your browser with one terminal command. It uses the same syntax as the gcloud CLI, so it works like adding a `--web` flag to a gcloud command.
 
-```
-$ gcloud run services describe api --region europe-west1   # YAML in the terminal
-$ gcw run services api                                     # gets opened in the web console
-$ gcw run services api --tab logs                          # straight to its logs
-$ gcloud run services describe api --web                   # the same page, as a flag of gcloud
-```
+![gcw in a terminal: TAB completes the kind, name and tab of a Cloud Run page and gcw opens it in the console; the same for a gcloud command with --web](https://raw.githubusercontent.com/terleckimaciej/gcloud-web/master/demo/demo.gif)
 
-Prefer gcloud's own syntax? Add `--web` to a gcloud command: see [Use it as `gcloud … --web`](#use-it-as-gcloud----web).
+Rather keep typing gcloud? After a one-time setup, you can also use gcw by adding `--web` to a gcloud command: see [Use it as `gcloud … --web`](#use-it-as-gcloud----web).
 
 The project, account and region come from your gcloud configuration, and TAB completes resource names from a local cache, so you rarely type more than a few letters.
 
 **gcw navigates, gcloud operates.** gcw only opens pages; it never changes cloud resources.
 
-> Status: prototype. Console URL templates are checked by hand against the real console, except the resource pages of Cloud Functions and Composer ([#35](https://github.com/terleckimaciej/gcloud-web/issues/35)).
+> Status: early release. Console URL templates are checked by hand against the real console, except the resource pages of Cloud Functions and Composer ([#35](https://github.com/terleckimaciej/gcloud-web/issues/35)).
 
 **Documentation:** [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md) · [Decisions](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/adr/README.md) · [Issues](https://github.com/terleckimaciej/gcloud-web/issues) · [Plan](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/plan.md)
 
@@ -30,7 +25,7 @@ The project, account and region come from your gcloud configuration, and TAB com
   - [TAB completion](#tab-completion)
   - [gcloud --web (optional)](#gcloud---web-optional)
 - [Usage](#usage)
-- [Use it as `gcloud … --web`](#use-it-as-gcloud----web)
+  - [Use it as `gcloud … --web`](#use-it-as-gcloud----web)
 - [How resources are found](#how-resources-are-found)
 - [Security](#security)
 - [Platforms](#platforms)
@@ -41,13 +36,21 @@ The project, account and region come from your gcloud configuration, and TAB com
 
 You need the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) with `gcloud auth login` done, and Python 3.11+ on your system. gcw has no other dependencies.
 
-Install gcw from PyPI with [pipx](https://pipx.pypa.io/):
+Install gcw from PyPI with [pipx](https://pipx.pypa.io/) or [uv](https://docs.astral.sh/uv/):
 
 ```
 pipx install gcw
 ```
 
-pipx puts gcw in its own isolated environment and only the `gcw` command on your `PATH`, so nothing mixes with your other Python packages. If you use [uv](https://docs.astral.sh/uv/), `uv tool install gcw` does the same.
+Update it later with `pipx upgrade gcw`. (Without pipx, `pip install gcw` works in a virtual environment.)
+
+```
+uv tool install gcw
+```
+
+Update it later with `uv tool upgrade gcw`.
+
+Both put gcw in its own isolated environment and only the `gcw` command on your `PATH`, so nothing mixes with your other Python packages.
 
 ### TAB completion
 
@@ -80,7 +83,7 @@ A command names a **service**, a **kind** of resource and the resource's **name*
 | service | a gcloud command group | `run`, `sql`, `storage`, `compute`, `container`, `composer` |
 | kind | a resource type of that service | `services`, `jobs`, `instances`, `buckets`, `clusters` |
 | name | your resource | `api`, `main-db`, `my-bucket/exports` (or `gs://my-bucket/exports`) |
-| tab | a section of the resource's page | `logs`, `revisions`, `backups`, `nodes` |
+| --tab | a section of the resource's page | `logs`, `revisions`, `backups`, `nodes` |
 
 Stop at any word to open a broader page:
 
@@ -126,7 +129,7 @@ eval "$(gcw env work)"                # bash, zsh
 gcw env work --shell fish | source    # fish
 ```
 
-## Use it as `gcloud … --web`
+### Use it as `gcloud … --web`
 
 Use `--web` as a flag of the gcloud CLI: add it to a gcloud command and its console page opens. It needs a one-time setup, see [gcloud --web](#gcloud---web-optional) under Installation.
 
@@ -143,18 +146,20 @@ $ gcloud storage ls gs://my-bucket/exports --web                 # the folder
 
 `--web` works on commands that read: `describe`, `list`, `get-iam-policy` and `storage ls`. A command that changes something (`update`, `deploy`, `delete`…) is neither run nor opened; gcw says so and names the nearest page. gcw prints the matching gcw command first, so you also learn the shorter spelling. Without `--web`, `gcloud` runs exactly as before.
 
-On a `gcloud` line, TAB is gcloud's own completion, so you lose what gcw's TAB gives: resource names and tabs from gcw's local cache. To explore, use plain gcw with TAB; reach for `--web` when you already have the gcloud command in front of you (recomended).
+On a `gcloud` line, TAB is gcloud's own completion, so you lose what gcw's TAB gives: resource names and tabs from gcw's local cache. Plain gcw is shorter and completes names; `--web` is for when you already have the gcloud command in front of you or simply know gcloud by heart.
 
 Without the shell function (in scripts, PowerShell or cmd), put `gcw` in front instead: `gcw gcloud run jobs describe nightly --region europe-west1`. Add `-n` at the end to print the URL.
 
 ## How resources are found
 
-gcw reads your account, project and default regions from gcloud's configuration in `~/.config/gcloud`. Resource names come from each service's read-only REST `list` API and are kept in gcw's own cache in `~/.cache/gcw` (`%LOCALAPPDATA%\gcw` on Windows; `GCW_CACHE_DIR` overrides it), per account and project.
+gcw reads your account, project and default regions from gcloud's configuration in `~/.config/gcloud`. Resource names come from each service's read-only REST `list` API and are kept in gcw's own cache in `~/.cache/gcw` (`%LOCALAPPDATA%\gcw` on Windows; `GCW_CACHE_DIR` overrides it).
 
-- The cache fills itself: using a stale entry (older than 24 hours) or an empty cache starts a refresh in the background. `gcw cache refresh` refreshes on demand, e.g. right after creating a resource.
-- A name that is not cached is looked up once, live, when you open it.
+- The cache fills itself and refreshes in the background. `gcw cache refresh` refreshes on demand, e.g. right after creating a resource.
+- A name that is not cached yet is looked up once, live, when you open it.
 - The location of a named resource comes from `-l`, then `$CLOUDSDK_<SECTION>_<NAME>` (e.g. `CLOUDSDK_RUN_REGION`), then the cache, then your gcloud configuration.
-- Services whose API is disabled in the project are skipped; `gcw cache refresh` says which. Dataproc and Composer are listed in the configured region only (`dataproc/region`, `composer/location`, else `compute/region`).
+- Dataproc and Composer are listed in the configured region only (`dataproc/region`, `composer/location`, else `compute/region`).
+
+More in [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md#cache).
 
 ## Security
 
@@ -170,10 +175,12 @@ Tried by hand on Linux. macOS and Windows are covered by the automated tests on 
 
 ## Development
 
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.11+:
+
 ```
-uv sync
-uv run pytest
-uv run gcw …
+uv sync          # set up
+uv run pytest    # run the tests
+uv run gcw …     # run gcw
 ```
 
 Tests never touch the network or your real gcloud configuration. Adding a service starts with a module in `src/gcw/services/` that declares its routes as data; see [Architecture](https://github.com/terleckimaciej/gcloud-web/blob/master/docs/architecture.md).

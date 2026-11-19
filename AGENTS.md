@@ -43,7 +43,9 @@ Instructions for AI agents (Claude Code, Codex, etc.) working in this repository
   - Scope is optional. Use it only when it adds information: a layer (`cli`, `context`, `cache`, `api`, `web`, `services`) or a GCP service (`run`, `sql`, …). Omit it for cross-cutting changes; never force one.
   - Description: imperative mood, lowercase, no trailing period, about 72 characters max. Mark breaking changes with `!` (e.g. `feat(cli)!: …`).
 - No AI attribution: do not add `Co-Authored-By` or "Generated with" lines to commit messages or PR descriptions.
-- The PR title uses the same format, because it becomes the commit message on squash merge. The PR description explains what changed and why, and how it was verified.
+- **Merging:** squash by default. The repo is set so the squash commit takes the PR **title** and the PR **description** (`squash_merge_commit_title=PR_TITLE`, `squash_merge_commit_message=PR_BODY`), so the PR is the one place to write them carefully; commits on the branch are scratch and disappear in the squash. Use a merge commit (or "rebase and merge") only when the PR holds several distinct commits worth keeping (e.g. a refactor separate from the feature). Then *every* commit must follow the format above and carry its own description, and the PR description does not reach git: the body of a merge commit is only the PR title.
+- **PR title:** the same format as a commit, about 72 characters at most (GitHub appends `(#N)`). On a squash merge it becomes the commit title.
+- **PR description:** on a squash merge it lands verbatim in the commit body on `master`, so it explains what changed and why, and how it was verified, following `.github/pull_request_template.md`. No checkboxes (they mean nothing in history) and no "next steps": plans belong in issues. Fix the description before merging, not after.
 
 ## ADRs
 
